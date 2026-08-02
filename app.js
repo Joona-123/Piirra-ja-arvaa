@@ -81,6 +81,9 @@
     buildLobby(code);
     $('hostNote').hidden = !link.isHost;
     show('screen-lobby');
+    // tila on voitu lähettää jo ennen kuin tiedettiin kuka olen -> piirrä uudelleen
+    if (link.isHost && link.engine) onState(link.engine.state());
+    else if (S.state) onState(S.state);
   }
 
   $('btnLeave').addEventListener('click', function () {
@@ -336,7 +339,7 @@
 
   /* ---------------- pelitapahtumat ---------------- */
 
-  link.on('state', function (st) {
+  function onState(st) {
     S.state = st;
     S.phase = st.phase;
     S.isDrawer = st.drawerId === S.me;
@@ -377,7 +380,8 @@
     }
 
     if (st.secondsLeft) setTimer(st.secondsLeft, S.total);
-  });
+  }
+  link.on('state', onState);
 
   link.on('lobby', function () { closeModal(); show('screen-lobby'); });
 
