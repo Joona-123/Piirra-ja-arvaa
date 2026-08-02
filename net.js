@@ -166,14 +166,17 @@ var CONNECT_TIMEOUT = 15000;
         if (!msg || typeof msg !== 'object') return;
         if (msg.e === 'hello') {
           if (self.conns.has(conn.peer)) return;
+          // Tarkistus ennen tervetuloviestiä, muuten hylätty pääsisi silti sisään.
           self.conns.set(conn.peer, conn);
-          self.wire(conn, 'welcome', { you: conn.peer, code: self.code });
           var res = self.engine.addPlayer(conn.peer, msg.d && msg.d.name);
           if (!res.ok) {
-            self.wire(conn, 'rejected', { error: res.error });
             self.conns.delete(conn.peer);
-            setTimeout(function () { try { conn.close(); } catch (e) {} }, 300);
+            self.wire(conn, 'rejected', { error: res.error });
+            setTimeout(function () { try { conn.close(); } catch (e) {} }, 400);
+            return;
           }
+          self.wire(conn, 'welcome', { you: conn.peer, code: self.code });
+          self.wire(conn, 'state', self.engine.state());
           return;
         }
         if (!self.conns.has(conn.peer)) return;

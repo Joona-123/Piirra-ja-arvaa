@@ -308,23 +308,28 @@
 
   /* ---------------- chat ja kuplat ---------------- */
 
-  var chat = $('chat'), floats = $('floats');
+  var toasts = $('toasts');
 
   function addBubble(o) {
-    var div = document.createElement('div');
-    if (o.kind === 'system') {
-      div.className = 'sysline ' + (o.tone || '');
-      div.textContent = o.text;
-    } else {
-      div.className = 'bubble' + (o.kind === 'correct' ? ' ok' : '') +
-        (o.kind === 'team' ? ' team' : '') + (o.playerId === S.me ? ' mine' : '');
-      div.innerHTML = '<span class="who">' + escapeHtml(o.name) +
-        (o.kind === 'team' ? ' · vain arvanneille' : '') + '</span>' + escapeHtml(o.text);
-      addFloat(o);
-    }
-    chat.appendChild(div);
-    while (chat.children.length > 60) chat.removeChild(chat.firstChild);
-    chat.scrollTop = chat.scrollHeight;
+    if (o.kind === 'system') return addToast(o.text, o.tone);
+    addFloat(o);
+  }
+
+  /* lyhyt ilmoitus ruudun alalaidassa (liittymiset, vihjeet yms.) */
+  function addToast(text, tone) {
+    var t = document.createElement('div');
+    t.className = 'toast ' + (tone || '');
+    t.textContent = text;
+    toasts.appendChild(t);
+    while (toasts.children.length > 3) toasts.removeChild(toasts.firstChild);
+    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4000);
+  }
+
+  /* poistaa kaikki kuplat kerralla (esim. kun vuoro päättyy) */
+  function clearBubbles() {
+    var list = document.querySelectorAll('.name-bubble');
+    for (var i = 0; i < list.length; i++) list[i].parentNode.removeChild(list[i]);
+    bubbleStack = {};
   }
 
   var BUBBLE_MS = 3400;
@@ -332,6 +337,8 @@
 
   function addFloat(o) {
     if (o.kind === 'team' || !o.playerId) return;
+    // vuoron tulosruutu on auki -> ei kuplia sen päälle
+    if (!modal.hidden) return;
     var card = null, cards = $('players').children;
     for (var i = 0; i < cards.length; i++) if (cards[i].dataset.id === o.playerId) card = cards[i];
     if (!card) return;
@@ -457,11 +464,17 @@
   link.on('live', function (seg) { board.applyLive(seg); });
 
   link.on('turnend', function (d) {
+    clearBubbles();
     board.setEnabled(false);
     $('tools').hidden = true;
     S.word = null;
-    var html = '<h2>' + (d.reason === 'all' ? 'Kaikki arvasivat!' : 'Aika loppui') + '</h2>' +
-      '<p class="hint">Sana oli</p><div class="reveal-word">' + escapeHtml(d.word || '–') + '</div><ul class="score-list">';
+    var otsikko = d.reason === 'all' ? 'Kaikki arvasivat!'
+      : d.reason === 'left' ? 'Piirtäjä poistui'
+      : 'Aika loppui';
+    var html = '<h2>' + otsikko + '</h2>' + (d.word
+      ? '<p class="hint">Sana oli</p><div class="reveal-word">' + escapeHtml(d.word) + '</div>'
+      : '<p class="hint">Sanaa ei ehditty valita – vuoro ohitettiin.</p>') +
+      '<ul class="score-list">';
     d.players.forEach(function (p) {
       var delta = d.deltas && d.deltas[p.id] ? '+' + d.deltas[p.id] : '';
       html += '<li><b>' + escapeHtml(p.name) + '</b><span><span class="delta">' + delta + '</span> ' + p.score + ' p</span></li>';
@@ -497,6 +510,12 @@
     var b = $('btnHome');
     if (b) b.addEventListener('click', function () { location.href = location.pathname; });
   });
+
+  /* apuri virheenetsintään ja testeihin (ei vaikuta peliin) */
+  window.__pja = { link: link, board: board, state: function () { return S; } };
+
+  /* ilmoita poistumisesta heti, jotta muut näkevät sen viiveettä */
+  window.addEventListener('pagehide', function () { link.leave(); });
 
   /* varoita hostia välilehden sulkemisesta kesken pelin */
   window.addEventListener('beforeunload', function (e) {

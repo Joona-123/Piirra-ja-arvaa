@@ -364,6 +364,22 @@ input:focus{ outline:none; border-bottom-style:solid; }
   .players li{ flex:1 1 44%; }
 }
 
+/* ---------- lyhyet ilmoitukset ---------- */
+
+.toasts{
+  flex:1 1 auto; min-height:0;
+  display:flex; flex-direction:column; justify-content:flex-end; gap:6px;
+  padding:4px 2px; overflow:hidden; pointer-events:none;
+}
+.toast{
+  align-self:center; text-align:center;
+  background:var(--paper-lit); border:2px dashed var(--ink); border-radius:10px;
+  padding:3px 12px; font-size:.9rem; color:var(--ink-soft);
+  animation:bubbleIn .18s ease-out, bubbleOut .5s ease-in 3.4s forwards;
+}
+.toast.good{ color:var(--green); border-color:var(--green); }
+.toast.bad{ color:var(--red); border-color:var(--red); }
+
 /* ---------- puhekupla pelaajan nimen kohdalla ---------- */
 
 .name-bubble{

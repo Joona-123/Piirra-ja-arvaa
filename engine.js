@@ -55,7 +55,7 @@
     this.hostId = opts.hostId;
 
     this.players = new Map();
-    this.retired = new Map();       // nimi -> pisteet (paluuta varten)
+    this.retired = new Map();       // nimi -> { score, id } paluuta varten
     this.settings = { rounds: 3, drawTime: 80 };
     this.phase = 'lobby';
     this.round = 0;
@@ -92,15 +92,31 @@
     if (this.players.size >= MAX_PLAYERS) return { ok: false, error: 'Peli on täynnä.' };
     var name = this.uniqueName(cleanName(rawName));
     var back = this.retired.get(name.toLowerCase());
-    var player = { id: id, name: name, score: back || 0, hasGuessed: false };
+
+    // Kesken pelin sisään pääsee vain se, joka oli mukana kun peli alkoi
+    // (esim. yhteys katkesi) – tunnistus tapahtuu nimen perusteella.
+    if (this.phase !== 'lobby' && !back) {
+      return {
+        ok: false,
+        error: 'Peli on jo käynnissä. Kesken pelin mukaan pääsee vain, jos oli mukana alusta asti – ' +
+               'kirjoita silloin täsmälleen sama nimi kuin aiemmin.'
+      };
+    }
+
+    var player = { id: id, name: name, score: back ? back.score : 0, hasGuessed: false };
     this.players.set(id, player);
-    this.retired.delete(name.toLowerCase());
+    if (back) {
+      this.retired.delete(name.toLowerCase());
+      // paluumuuttaja perii oman piirtovuoronsa
+      for (var oi = 0; oi < this.order.length; oi++) if (this.order[oi] === back.id) this.order[oi] = id;
+      this.sys(name + ' palasi peliin.', 'good');
+    }
 
     if (this.phase !== 'lobby') {
       this.io.to(id, 'sync', { ops: this.ops });
       if (this.phase === 'draw') this.io.to(id, 'pattern', { pattern: this.patternOf() });
     }
-    this.sys(name + ' liittyi peliin.', 'info');
+    if (!back) this.sys(name + ' liittyi peliin.', 'info');
     this.broadcast();
     return { ok: true, player: player };
   };
@@ -109,8 +125,18 @@
     var player = this.players.get(id);
     if (!player) return;
     this.players.delete(id);
-    if (player.score > 0) this.retired.set(player.name.toLowerCase(), player.score);
+    if (this.phase !== 'lobby') {
+      this.retired.set(player.name.toLowerCase(), { score: player.score, id: player.id });
+    }
     this.sys(player.name + ' poistui.', 'info');
+
+    // Jos pelinjohtaja jostain syystä katoaa pelaajista, ohjat siirtyvät seuraavalle,
+    // jottei peli jää lukkoon. (P2P-pelissä johtajan lähtö päättää pelin muutenkin.)
+    if (this.hostId === id && this.players.size > 0) {
+      this.hostId = this.players.keys().next().value;
+      var uusi = this.players.get(this.hostId);
+      if (uusi) this.sys(uusi.name + ' on nyt pelinjohtaja.', 'info');
+    }
 
     if (this.drawerId === id && (this.phase === 'draw' || this.phase === 'choose')) {
       this.sys('Piirtäjä poistui – vuoro päättyy.', 'bad');
