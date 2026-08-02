@@ -329,11 +329,9 @@
   function clearBubbles() {
     var list = document.querySelectorAll('.name-bubble');
     for (var i = 0; i < list.length; i++) list[i].parentNode.removeChild(list[i]);
-    bubbleStack = {};
   }
 
   var BUBBLE_MS = 3400;
-  var bubbleStack = {};   // pelaaja -> montako kuplaa juuri nyt päällekkäin
 
   function addFloat(o) {
     if (o.kind === 'team' || !o.playerId) return;
@@ -343,29 +341,27 @@
     for (var i = 0; i < cards.length; i++) if (cards[i].dataset.id === o.playerId) card = cards[i];
     if (!card) return;
 
+    // vain uusin viesti näkyy: edellinen saman pelaajan kupla poistuu
+    var vanhat = document.querySelectorAll('.name-bubble[data-player="' + o.playerId + '"]');
+    for (var v = 0; v < vanhat.length; v++) vanhat[v].parentNode.removeChild(vanhat[v]);
+
     var b = document.createElement('div');
     b.className = 'name-bubble' + (o.kind === 'correct' ? ' ok' : '');
     b.textContent = o.text;
     b.setAttribute('data-player', o.playerId);
     document.body.appendChild(b);
 
-    var stack = bubbleStack[o.playerId] = (bubbleStack[o.playerId] || 0) + 1;
     var r = card.getBoundingClientRect();
     var size = b.getBoundingClientRect();
     var w = size.width || 120, h = size.height || 28;
-    var lift = (stack - 1) * (h + 6);
-
     var left = Math.max(6, Math.min((window.innerWidth || 360) - w - 6, r.left + r.width / 2 - w / 2));
-    var top = r.top - h - 12 - lift;
-    if (top < 4) { top = r.bottom + 10 + lift; b.classList.add('below'); }
+    var top = r.top - h - 12;
+    if (top < 4) { top = r.bottom + 10; b.classList.add('below'); }
 
     b.style.left = Math.round(left) + 'px';
     b.style.top = Math.round(top) + 'px';
 
-    setTimeout(function () {
-      if (b.parentNode) b.parentNode.removeChild(b);
-      bubbleStack[o.playerId] = Math.max(0, (bubbleStack[o.playerId] || 1) - 1);
-    }, BUBBLE_MS);
+    setTimeout(function () { if (b.parentNode) b.parentNode.removeChild(b); }, BUBBLE_MS);
   }
 
   $('chatForm').addEventListener('submit', function (e) {
@@ -511,8 +507,35 @@
     if (b) b.addEventListener('click', function () { location.href = location.pathname; });
   });
 
+  /* ---------------- näkyvän alueen sovitus (puhelimen näppäimistö) ---------------- */
+
+  function fitViewport() {
+    var vv = window.visualViewport || null;      // luetaan aina uudestaan
+    var full = window.innerHeight || 0;
+    var h = vv ? vv.height : full;
+    document.documentElement.style.setProperty('--app-h', Math.round(h) + 'px');
+    // näppäimistö vie yli 15 % korkeudesta -> tiivistetty tila
+    var keyboard = !!full && h < full - full * 0.15;
+    document.body.classList.toggle('keyboard', keyboard);
+    if (board) board.resize();
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', fitViewport);
+    window.visualViewport.addEventListener('scroll', fitViewport);
+  }
+  window.addEventListener('resize', fitViewport);
+  window.addEventListener('orientationchange', function () { setTimeout(fitViewport, 250); });
+  fitViewport();
+
+  // kenttään kirjoitettaessa pidetään näkymä paikallaan
+  $('chatInput').addEventListener('focus', function () {
+    setTimeout(function () { window.scrollTo(0, 0); fitViewport(); }, 120);
+  });
+  $('chatInput').addEventListener('blur', function () { setTimeout(fitViewport, 150); });
+
   /* apuri virheenetsintään ja testeihin (ei vaikuta peliin) */
-  window.__pja = { link: link, board: board, state: function () { return S; } };
+  window.__pja = { link: link, board: board, fitViewport: fitViewport, state: function () { return S; } };
 
   /* ilmoita poistumisesta heti, jotta muut näkevät sen viiveettä */
   window.addEventListener('pagehide', function () { link.leave(); });

@@ -211,11 +211,12 @@
     var letters = [];
     for (var i = 0; i < this.word.length; i++) if (!/[\s-]/.test(this.word[i])) letters.push(i);
     letters = shuffle(letters);
-    var count = Math.max(1, Math.min(Math.floor(letters.length * 0.35), letters.length - 2));
+    // Ensimmäinen vihje jo noin neljänneksen kohdalla, ja kirjaimia hieman enemmän.
+    var count = Math.max(1, Math.min(Math.round(letters.length * 0.45), letters.length - 2));
     var picked = letters.slice(0, count);
     var t = this.settings.drawTime;
     return picked.map(function (idx, i) {
-      return { idx: idx, at: Math.round(t * 0.6 - (i * (t * 0.45)) / Math.max(1, picked.length)) };
+      return { idx: idx, at: Math.round(t * 0.75 - (i * (t * 0.6)) / Math.max(1, picked.length)) };
     }).sort(function (a, b) { return b.at - a.at; });
   };
 

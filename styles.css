@@ -191,7 +191,8 @@ input:focus{ outline:none; border-bottom-style:solid; }
 
 #screen-game{
   position:relative; z-index:2;
-  height:100dvh; flex-direction:column; padding:8px; gap:8px; overflow:hidden;
+  height:var(--app-h, 100dvh);
+  flex-direction:column; padding:8px; gap:8px; overflow:hidden;
 }
 
 .hud{
@@ -226,9 +227,9 @@ input:focus{ outline:none; border-bottom-style:solid; }
 .hud-timer.low .ring-fill{ stroke:var(--red); }
 #timerText{ font-family:var(--font-stamp); font-size:1.05rem; }
 
-.stage{ flex:0 0 auto; display:flex; flex-direction:column; gap:8px; min-width:0; }
+.stage{ flex:1 1 auto; display:flex; flex-direction:column; gap:8px; min-width:0; min-height:0; }
 
-.pad-holder{ position:relative; padding-top:14px; display:flex; justify-content:center; }
+.pad-holder{ position:relative; padding-top:14px; display:flex; justify-content:center; flex:1 1 auto; min-height:0; }
 .spiral{
   position:absolute; top:0; left:14px; right:14px; height:20px;
   background-image:radial-gradient(circle at 6px 8px, transparent 4px, var(--ink) 4px, var(--ink) 5.5px, transparent 6px);
@@ -237,7 +238,7 @@ input:focus{ outline:none; border-bottom-style:solid; }
 .sheet{
   position:relative;
   aspect-ratio:4/3;
-  height:min(44dvh, 74vw); width:auto;
+  height:100%; width:auto; max-width:100%; max-height:100%;
   background-color:#fffdf5;
   background-image:radial-gradient(rgba(35,32,29,.10) 1px, transparent 1px);
   background-size:22px 22px;
@@ -299,7 +300,7 @@ input:focus{ outline:none; border-bottom-style:solid; }
 
 /* ---------- sivupalkki ---------- */
 
-.side{ flex:1 1 auto; display:flex; flex-direction:column; gap:8px; min-height:0; }
+.side{ flex:0 0 auto; display:flex; flex-direction:column; gap:6px; min-height:0; }
 
 .players{
   list-style:none; margin:0; padding:2px; display:flex; gap:8px; overflow-x:auto; flex:0 0 auto;
@@ -340,6 +341,16 @@ input:focus{ outline:none; border-bottom-style:solid; }
 }
 .chat-form.hidden{ display:none; }
 
+/* näppäimistö auki: karsitaan kaikki ylimääräinen, jotta sana, piirros ja kenttä mahtuvat */
+body.keyboard .players li{ padding:2px 7px; font-size:.8rem; min-width:0; }
+body.keyboard .players li .pts{ display:none; }
+body.keyboard .toasts{ display:none; }
+body.keyboard .spiral{ display:none; }
+body.keyboard .pad-holder{ padding-top:0; }
+body.keyboard .hud{ padding:2px 10px; }
+body.keyboard .hud-round{ display:none; }
+body.keyboard #screen-game{ gap:5px; padding:5px; }
+
 @media (max-width:420px){
   .tool{ width:34px; height:34px; }
   .tool svg{ width:19px; height:19px; }
@@ -367,7 +378,7 @@ input:focus{ outline:none; border-bottom-style:solid; }
 /* ---------- lyhyet ilmoitukset ---------- */
 
 .toasts{
-  flex:1 1 auto; min-height:0;
+  flex:0 1 auto; min-height:0; max-height:64px;
   display:flex; flex-direction:column; justify-content:flex-end; gap:6px;
   padding:4px 2px; overflow:hidden; pointer-events:none;
 }
