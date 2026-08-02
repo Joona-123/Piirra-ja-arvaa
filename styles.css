@@ -189,7 +189,7 @@ input:focus{ outline:none; border-bottom-style:solid; }
 
 #screen-game{
   position:relative; z-index:2;
-  height:100dvh; flex-direction:column; padding:8px; gap:8px;
+  height:100dvh; flex-direction:column; padding:8px; gap:8px; overflow:hidden;
 }
 
 .hud{
@@ -235,7 +235,7 @@ input:focus{ outline:none; border-bottom-style:solid; }
 .sheet{
   position:relative;
   aspect-ratio:4/3;
-  height:min(50dvh, 74vw); width:auto;
+  height:min(44dvh, 74vw); width:auto;
   background-color:#fffdf5;
   background-image:radial-gradient(rgba(35,32,29,.10) 1px, transparent 1px);
   background-size:22px 22px;
@@ -314,7 +314,7 @@ input:focus{ outline:none; border-bottom-style:solid; }
 .players li.me b{ text-decoration:underline wavy var(--red) 1.5px; }
 
 .chat{
-  flex:1 1 auto; min-height:80px; overflow-y:auto;
+  flex:1 1 auto; min-height:0; overflow-y:auto;
   display:flex; flex-direction:column; gap:6px; padding:6px 4px;
 }
 .bubble{
@@ -332,7 +332,10 @@ input:focus{ outline:none; border-bottom-style:solid; }
 .sysline.bad{ color:var(--red); }
 
 .chat-form{ display:flex; gap:8px; align-items:center; flex:0 0 auto; padding-bottom:env(safe-area-inset-bottom); }
-.chat-form input{ border-bottom-color:var(--ink); }
+.chat-form input{
+  border:2.5px solid var(--ink); border-radius:var(--wobble2);
+  background:var(--paper-lit); padding:10px 14px;
+}
 .chat-form.hidden{ display:none; }
 
 @media (max-width:420px){

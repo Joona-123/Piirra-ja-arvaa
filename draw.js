@@ -36,6 +36,12 @@
     this._onResize = function () { self.resize(); };
     window.addEventListener('resize', this._onResize);
     window.addEventListener('orientationchange', this._onResize);
+    // Peliruutu on piilossa sivun latautuessa, jolloin mittaus antaa nollan.
+    // ResizeObserver mitoittaa kanvaasin heti kun alusta saa oikean kokonsa.
+    if (typeof ResizeObserver !== 'undefined') {
+      this._ro = new ResizeObserver(function () { self.resize(); });
+      this._ro.observe(this.sheet);
+    }
   }
 
   /* ---------- koko ---------- */
@@ -54,6 +60,8 @@
   };
 
   Board.prototype._prep = function (ctx) {
+    if (!this.sx) this.resize();
+    if (!this.sx) return;
     ctx.setTransform(this.sx, 0, 0, this.sy, 0, 0);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';

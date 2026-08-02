@@ -11,14 +11,21 @@
   /* ---------------- ruudut ---------------- */
 
   function show(id) {
+    if (id === 'screen-game' && typeof board !== 'undefined' && board) {
+      setTimeout(function () { board.resize(); }, 0);
+    }
     ['screen-home', 'screen-lobby', 'screen-game'].forEach(function (s) {
       $(s).classList.toggle('active', s === id);
     });
   }
 
   var modal = $('modal'), modalCard = $('modalCard');
-  function openModal(html) { modalCard.innerHTML = html; modal.hidden = false; }
-  function closeModal() { modal.hidden = true; modalCard.innerHTML = ''; }
+  function openModal(html, kind) {
+    S.modalKind = kind || null;
+    modalCard.innerHTML = html;
+    modal.hidden = false;
+  }
+  function closeModal() { modal.hidden = true; modalCard.innerHTML = ''; S.modalKind = null; }
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -352,6 +359,9 @@
 
     if (!$('screen-game').classList.contains('active') && st.phase !== 'gameend') show('screen-game');
 
+    // uusi vuoro alkoi -> edellisen vuoron tulosruutu pois, muuten peli näyttää jumittuneen
+    if ((st.phase === 'choose' || st.phase === 'draw') && S.modalKind === 'turnend') closeModal();
+
     $('roundLabel').textContent = 'Kierros\n' + st.round + '/' + st.rounds;
     renderPlayers(st);
 
@@ -397,7 +407,7 @@
       html += '<button class="btn" data-i="' + i + '">' + escapeHtml(w) + '</button>';
     });
     html += '</div><div class="choose-bar"><i></i></div><p class="hint">Jos et valitse, sana arvotaan.</p>';
-    openModal(html);
+    openModal(html, 'choices');
     modalCard.querySelectorAll('button[data-i]').forEach(function (b) {
       b.addEventListener('click', function () {
         link.send('choose', { index: Number(b.dataset.i) });
@@ -429,7 +439,12 @@
       var delta = d.deltas && d.deltas[p.id] ? '+' + d.deltas[p.id] : '';
       html += '<li><b>' + escapeHtml(p.name) + '</b><span><span class="delta">' + delta + '</span> ' + p.score + ' p</span></li>';
     });
-    openModal(html + '</ul>');
+    openModal(html + '</ul><p class="hint">Seuraava vuoro alkaa hetken kuluttua…</p>', 'turnend');
+    // varmistus: vaikka tilaviesti jäisi tulematta, tulosruutu ei jää jumiin
+    clearTimeout(S.turnEndTimer);
+    S.turnEndTimer = setTimeout(function () {
+      if (S.modalKind === 'turnend') closeModal();
+    }, 9000);
   });
 
   link.on('gameend', function (d) {
@@ -442,7 +457,7 @@
     html += isHost
       ? '<button class="btn btn-primary" id="btnAgain">Takaisin aulaan</button>'
       : '<p class="hint">Pelinjohtaja voi aloittaa uuden pelin.</p>';
-    openModal(html);
+    openModal(html, 'gameend');
     var again = $('btnAgain');
     if (again) again.addEventListener('click', function () { link.send('backToLobby'); closeModal(); });
   });
