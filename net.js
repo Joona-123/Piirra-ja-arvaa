@@ -43,6 +43,13 @@ var CONNECT_TIMEOUT = 15000;
     return out;
   }
 
+  function peerAvailable() {
+    return typeof root.Peer === 'function';
+  }
+
+  var MISSING_LIB = 'Peliä ei voitu avata: yhteyskirjasto vendor/peerjs.min.js ei latautunut. ' +
+    'Varmista, että kansio vendor/ tiedostoineen on viety GitHubiin.';
+
   function Link() {
     this.handlers = {};
     this.isHost = false;
@@ -73,10 +80,16 @@ var CONNECT_TIMEOUT = 15000;
   Link.prototype.createGame = function (name, cb) {
     var self = this;
     var attempts = 0;
+    if (!peerAvailable()) return cb(MISSING_LIB);
 
     function attempt() {
       var code = randomCode();
-      var peer = new root.Peer(ID_PREFIX + code, PEER_CONFIG);
+      var peer;
+      try {
+        peer = new root.Peer(ID_PREFIX + code, PEER_CONFIG);
+      } catch (e) {
+        return cb(MISSING_LIB);
+      }
       var settled = false;
       var timer = setTimeout(function () {
         if (settled) return;
@@ -195,7 +208,13 @@ var CONNECT_TIMEOUT = 15000;
   Link.prototype.joinGame = function (code, name, cb) {
     var self = this;
     code = String(code || '').toUpperCase().trim();
-    var peer = new root.Peer(PEER_CONFIG);
+    if (!peerAvailable()) return cb(MISSING_LIB);
+    var peer;
+    try {
+      peer = new root.Peer(PEER_CONFIG);
+    } catch (e) {
+      return cb(MISSING_LIB);
+    }
     var settled = false;
 
     var timer = setTimeout(function () {
