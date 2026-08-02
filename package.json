@@ -1,0 +1,15 @@
+{
+  "name": "piirra-ja-arvaa",
+  "version": "1.0.0",
+  "description": "Selainpohjainen piirustus- ja arvauspeli. Staattinen, toimii GitHub Pagesissa ilman palvelinta.",
+  "private": true,
+  "scripts": {
+    "test": "node test/engine.test.js",
+    "test:ui": "node test/ui.test.js",
+    "start": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  },
+  "license": "MIT"
+}
