@@ -26,6 +26,8 @@
 
 *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
+[hidden]{ display:none !important; }
+
 html,body{ height:100%; }
 
 body{
@@ -361,6 +363,32 @@ input:focus{ outline:none; border-bottom-style:solid; }
   .players{ flex-wrap:wrap; overflow:visible; }
   .players li{ flex:1 1 44%; }
 }
+
+/* ---------- puhekupla pelaajan nimen kohdalla ---------- */
+
+.name-bubble{
+  position:fixed; z-index:30; pointer-events:none;
+  max-width:min(240px, 60vw);
+  background:var(--paper-lit); border:2.5px solid var(--ink);
+  border-radius:14px 14px 14px 4px;
+  padding:4px 11px; font-size:1rem; line-height:1.25;
+  box-shadow:2px 3px 0 rgba(35,32,29,.2);
+  animation:bubbleIn .18s ease-out, bubbleOut .45s ease-in 2.9s forwards;
+  overflow-wrap:anywhere;
+}
+.name-bubble::after{
+  content:''; position:absolute; left:14px; bottom:-9px;
+  width:0; height:0;
+  border:7px solid transparent; border-top-color:var(--ink); border-bottom:0;
+}
+.name-bubble.ok{ background:#d9f2dd; border-color:var(--green); color:#1e5c2c; font-weight:bold; }
+.name-bubble.ok::after{ border-top-color:var(--green); }
+.name-bubble.below{ border-radius:4px 14px 14px 14px; }
+.name-bubble.below::after{ top:-9px; bottom:auto; border:7px solid transparent; border-bottom-color:var(--ink); border-top:0; }
+.name-bubble.below.ok::after{ border-bottom-color:var(--green); }
+
+@keyframes bubbleIn{ from{ transform:scale(.7) translateY(6px); opacity:0; } to{ transform:none; opacity:1; } }
+@keyframes bubbleOut{ to{ opacity:0; transform:translateY(-10px); } }
 
 /* ================= MODAALI ================= */
 

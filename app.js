@@ -298,6 +298,7 @@
     ul.innerHTML = '';
     st.players.forEach(function (p) {
       var li = document.createElement('li');
+      li.dataset.id = p.id;
       li.className = (p.isDrawer ? 'drawer ' : '') + (p.guessed ? 'guessed ' : '') + (p.id === S.me ? 'me' : '');
       li.innerHTML = '<b>' + (p.isDrawer ? '✏️ ' : '') + escapeHtml(p.name) + '</b>' +
         '<span class="pts">' + p.score + ' p' + (p.guessed ? ' ✓' : '') + '</span>';
@@ -326,14 +327,38 @@
     chat.scrollTop = chat.scrollHeight;
   }
 
+  var BUBBLE_MS = 3400;
+  var bubbleStack = {};   // pelaaja -> montako kuplaa juuri nyt päällekkäin
+
   function addFloat(o) {
-    if (o.kind === 'team') return;
-    var d = document.createElement('div');
-    d.className = 'float' + (o.kind === 'correct' ? ' ok' : '');
-    d.textContent = o.name + ': ' + o.text;
-    floats.appendChild(d);
-    while (floats.children.length > 4) floats.removeChild(floats.firstChild);
-    setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 3900);
+    if (o.kind === 'team' || !o.playerId) return;
+    var card = null, cards = $('players').children;
+    for (var i = 0; i < cards.length; i++) if (cards[i].dataset.id === o.playerId) card = cards[i];
+    if (!card) return;
+
+    var b = document.createElement('div');
+    b.className = 'name-bubble' + (o.kind === 'correct' ? ' ok' : '');
+    b.textContent = o.text;
+    b.setAttribute('data-player', o.playerId);
+    document.body.appendChild(b);
+
+    var stack = bubbleStack[o.playerId] = (bubbleStack[o.playerId] || 0) + 1;
+    var r = card.getBoundingClientRect();
+    var size = b.getBoundingClientRect();
+    var w = size.width || 120, h = size.height || 28;
+    var lift = (stack - 1) * (h + 6);
+
+    var left = Math.max(6, Math.min((window.innerWidth || 360) - w - 6, r.left + r.width / 2 - w / 2));
+    var top = r.top - h - 12 - lift;
+    if (top < 4) { top = r.bottom + 10 + lift; b.classList.add('below'); }
+
+    b.style.left = Math.round(left) + 'px';
+    b.style.top = Math.round(top) + 'px';
+
+    setTimeout(function () {
+      if (b.parentNode) b.parentNode.removeChild(b);
+      bubbleStack[o.playerId] = Math.max(0, (bubbleStack[o.playerId] || 1) - 1);
+    }, BUBBLE_MS);
   }
 
   $('chatForm').addEventListener('submit', function (e) {
@@ -368,7 +393,9 @@
     var me = st.players.filter(function (p) { return p.id === S.me; })[0];
     board.setEnabled(S.isDrawer && st.phase === 'draw');
     $('tools').hidden = !S.isDrawer || st.phase !== 'draw';
-    $('chatInput').placeholder = S.isDrawer ? 'Vinkkejä ei saa antaa…' : (me && me.guessed ? 'Kirjoita arvanneille…' : 'Kirjoita arvaus…');
+    var hideInput = S.isDrawer && st.phase === 'draw';
+    $('chatForm').hidden = hideInput;
+    $('chatInput').placeholder = (me && me.guessed) ? 'Kirjoita arvanneille…' : 'Kirjoita arvaus…';
 
     var wait = $('waitNote');
     if (st.phase === 'choose') {
