@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.6.0';
+  var GAME_VERSION = '1.7.0';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -271,8 +271,14 @@
     { id: 'fill', title: 'Väritä alue', svg: '<path d="M6 12L12 6l7 7-6 6a2 2 0 0 1-3 0l-4-4a2 2 0 0 1 0-3z"/><path d="M10 4l2 2"/><path class="fill" d="M20 20c1.2 0 2-.8 2-1.8 0-1-2-3.2-2-3.2s-2 2.2-2 3.2c0 1 .8 1.8 2 1.8z"/>' },
     { id: 'eraser', title: 'Pyyhekumi', svg: '<path d="M8 19h11"/><path d="M15 5l5 5-8 8H8l-3-3z"/>' }
   ];
-  var COLORS = ['#23201d', '#7a7168', '#ffffff', '#e04b3c', '#f08a2c', '#f2b830',
-    '#3f9b53', '#2aa39b', '#2f6fae', '#8759a8', '#e07ab0', '#8a5a2b'];
+  var COLORS = [
+    '#23201d', '#5c554c', '#9c948a', '#ffffff',
+    '#7a3b12', '#8a5a2b', '#c2410c', '#f08a2c',
+    '#a01f16', '#e04b3c', '#f2b830', '#f7e463',
+    '#1f6e43', '#3f9b53', '#8bc34a', '#2aa39b',
+    '#26418f', '#2f6fae', '#4fc3e8', '#5a2d82',
+    '#8759a8', '#c0399a', '#e07ab0', '#f6c6b0'
+  ];
   var WIDTHS = [4, 9, 18, 34];
 
   function buildTools() {

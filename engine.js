@@ -287,6 +287,17 @@
     this.nextTurn();
   };
 
+  /* Sama järjestys kierroksesta toiseen: poistuneet pois, uudet perään.
+     Näin vuoro kiertää aina seuraavalle eikä sama pelaaja piirrä kahdesti peräkkäin. */
+  Engine.prototype.rotationOrder = function () {
+    var self = this;
+    var jarjestys = this.order.filter(function (id) { return self.players.has(id); });
+    this.players.forEach(function (p, id) {
+      if (jarjestys.indexOf(id) === -1) jarjestys.push(id);
+    });
+    return jarjestys;
+  };
+
   Engine.prototype.nextTurn = function () {
     this.stopTimers();
     this.turnIndex++;
@@ -295,7 +306,7 @@
       if (this.turnIndex >= this.order.length) {
         this.round++;
         if (this.round > this.settings.rounds) return this.endGame();
-        this.order = shuffle(Array.from(this.players.keys()));
+        this.order = this.rotationOrder();
         this.turnIndex = 0;
         this.sys('Kierros ' + this.round + '/' + this.settings.rounds, 'info');
       }

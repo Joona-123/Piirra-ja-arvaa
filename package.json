@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node test/engine.test.js",
     "test:ui": "node test/ui.test.js",
-    "start": "python3 -m http.server 8000"
+    "start": "python3 -m http.server 8000",
+    "test:fill": "node test/fill.test.js"
   },
   "devDependencies": {
     "jsdom": "^24.0.0"

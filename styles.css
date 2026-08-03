@@ -314,7 +314,8 @@ body.drawfull .hud-menu{ opacity:.55; }
 @keyframes sykki{ 0%,100%{ transform:scale(1) } 50%{ transform:scale(1.12) } }
 .tool:active{ transform:translateY(2px); }
 
-.swatch{ width:30px; height:30px; border:2.5px solid var(--ink); border-radius:50%; cursor:pointer; padding:0; }
+.swatch{ width:26px; height:26px; border:2px solid var(--ink); border-radius:50%; cursor:pointer; padding:0; }
+#colorRow{ gap:4px; max-width:100%; }
 .swatch.on{ transform:scale(1.22); box-shadow:0 0 0 2px var(--paper-lit), 0 0 0 4px var(--ink); }
 .widths{ display:flex; gap:6px; align-items:center; }
 .width-btn{
@@ -397,11 +398,11 @@ body.drawfull.tools-open .tools{ display:flex; }
 
 body.keyboard .stage .players,
 body.drawfull .stage .players{
-  padding-top:46px;   /* tilaa valikkopainikkeelle */
   position:absolute; inset:0; z-index:6;
   display:flex; flex-flow:column wrap; align-content:space-between;
   justify-content:flex-start; gap:3px;
-  pointer-events:none; padding:0;
+  pointer-events:none;
+  padding:48px 0 0;        /* tilaa valikkopainikkeelle vasemmassa yläkulmassa */
 }
 body.keyboard .stage .players li,
 body.drawfull .stage .players li{
@@ -419,7 +420,7 @@ body.keyboard #screen-game{ gap:5px; padding:5px; }
 @media (max-width:420px){
   .tool{ width:34px; height:34px; }
   .tool svg{ width:19px; height:19px; }
-  .swatch{ width:26px; height:26px; }
+  .swatch{ width:23px; height:23px; }
   .width-btn{ width:30px; height:30px; }
   .tools{ padding:6px; gap:6px; }
 }

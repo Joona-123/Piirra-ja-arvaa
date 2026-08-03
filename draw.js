@@ -173,11 +173,49 @@
       pino.push(j);
     }
 
+    // Viivojen reunat ovat pehmennettyjä (osittain läpinäkyviä), joten pelkkä
+    // täyttö jättäisi niiden ja värin väliin ohuen raidan. Levitetään väriä
+    // pari pikseliä niihin reunapikseleihin, jotka eivät ole täyttä mustetta.
+    levitäReunoille(d, käyty, W, H, väri, 2);
+
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.putImageData(img, 0, 0);
     ctx.restore();
   };
+
+  function levitäReunoille(d, käyty, W, H, väri, kierrokset) {
+    for (var k = 0; k < kierrokset; k++) {
+      var lisättävät = [];
+      for (var y = 0; y < H; y++) {
+        for (var x = 0; x < W; x++) {
+          var idx = y * W + x;
+          if (käyty[idx]) continue;
+          var j = idx * 4;
+          if (d[j + 3] >= 250) continue;            // täysi muste = viivan ydin, ei väritetä
+          if (!naapuriTäytetty(käyty, x, y, W, H)) continue;
+          lisättävät.push(idx);
+        }
+      }
+      if (!lisättävät.length) return;
+      for (var i = 0; i < lisättävät.length; i++) {
+        var id2 = lisättävät[i], p2 = id2 * 4;
+        var a = d[p2 + 3] / 255;                    // säilytetään viivan pehmennys
+        d[p2] = Math.round(d[p2] * a + väri[0] * (1 - a));
+        d[p2 + 1] = Math.round(d[p2 + 1] * a + väri[1] * (1 - a));
+        d[p2 + 2] = Math.round(d[p2 + 2] * a + väri[2] * (1 - a));
+        d[p2 + 3] = 255;
+        käyty[id2] = 1;
+      }
+    }
+  }
+
+  function naapuriTäytetty(käyty, x, y, W, H) {
+    return (x > 0 && käyty[y * W + x - 1]) ||
+           (x < W - 1 && käyty[y * W + x + 1]) ||
+           (y > 0 && käyty[(y - 1) * W + x]) ||
+           (y < H - 1 && käyty[(y + 1) * W + x]);
+  }
 
   function hexToRgb(hex) {
     if (!hex || hex === ERASE) return null;
