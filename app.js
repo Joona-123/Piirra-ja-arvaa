@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.8.0';
+  var GAME_VERSION = '1.10.0';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -13,6 +13,7 @@
   /* ---------------- ruudut ---------------- */
 
   function show(id) {
+    if (id !== 'screen-home' && typeof lopetaListaus === 'function') lopetaListaus();
     var menu = document.getElementById('btnMenu');
     if (menu) menu.hidden = (id !== 'screen-game');
     setTimeout(syncMenuButton, 0);
@@ -125,47 +126,110 @@
     });
   }
 
-  var haetaan = false;
-  function haeAvoimetPelit() {
-    if (haetaan) return;
-    haetaan = true;
-    $('openNote').textContent = 'Haetaan avoimia pelejä…';
-    $('btnRefresh').disabled = true;
-    link.browsePublic(function (pelit) {
-      haetaan = false;
-      $('btnRefresh').disabled = false;
-      var ul = $('openGames');
-      ul.innerHTML = '';
-      if (!pelit.length) {
-        $('openNote').textContent = 'Ei avoimia pelejä juuri nyt. Luo oma ja jaa koodi kavereille.';
-        return;
-      }
-      $('openNote').textContent = '';
-      pelit.forEach(function (p) {
-        var kaynnissa = p.phase && p.phase !== 'lobby' && p.phase !== 'countdown';
-        var li = document.createElement('li');
+  var avoimet = [], vahti = null, arvioAjastin = null;
+
+  // Arvio pelin jäljellä olevasta kestosta sekunteina.
+  function arvioKesto(p) {
+    if (!p || !p.drawTime) return null;
+    var pelaajia = p.order || p.players || 2;
+    var vuoroja = (p.rounds || 3) * pelaajia;
+    var tehty = ((p.round || 1) - 1) * pelaajia + (p.turnIndex || 0);
+    var jaljella = Math.max(0, vuoroja - tehty - 1);
+    var vuoronKesto = p.drawTime + 16;                 // sanavalinta + tulosruutu
+    return Math.max(0, (p.turnLeft || 0) + jaljella * vuoronKesto);
+  }
+
+  function paivitaArviot() {
+    var nyt = Date.now();
+    avoimet.forEach(function (p) {
+      if (p._arvio == null || !p._rivi) return;
+      var kulunut = Math.round((nyt - p._haettu) / 1000);
+      var jaljella = Math.max(0, p._arvio - kulunut);
+      var el = p._rivi.querySelector('.arvio');
+      if (el) el.textContent = jaljella > 0 ? 'jäljellä n. ' + muotoileAika(jaljella) : 'päättymässä';
+    });
+  }
+
+  // Lista päivittyy paikallaan: rivejä ei rakenneta uudelleen, jottei se välky
+  // eikä nappi karkaa sormen alta kesken painalluksen.
+  function piirraLista(pelit) {
+    var ul = document.getElementById && document.getElementById('openGames');
+    if (!ul) return;                       // sivu on jo suljettu
+    avoimet = pelit;
+    $('openSpin').hidden = true;
+    $('openNote').textContent = pelit.length
+      ? '' : 'Ei avoimia pelejä juuri nyt. Luo oma ja jaa koodi kavereille.';
+
+    var vanhat = {};
+    for (var i = 0; i < ul.children.length; i++) vanhat[ul.children[i].dataset.code] = ul.children[i];
+
+    pelit.forEach(function (p) {
+      var kaynnissa = p.phase && p.phase !== 'lobby' && p.phase !== 'countdown';
+      var taynna = p.players >= 12;
+      p._arvio = kaynnissa ? arvioKesto(p) : null;
+      p._haettu = Date.now();
+
+      var li = vanhat[p.code];
+      if (li) {
+        delete vanhat[p.code];
+      } else {
+        li = document.createElement('li');
+        li.dataset.code = p.code;
         li.innerHTML =
           '<span class="koodi">' + escapeHtml(p.code) + '</span>' +
-          '<span class="tiedot"><span class="nimi">' + escapeHtml(p.host || 'Peli') + '</span>' +
-          '<span class="tila ' + (kaynnissa ? 'kaynnissa' : 'aulassa') + '">' +
-          (kaynnissa ? 'Käynnissä · kierros ' + p.round + '/' + p.rounds : 'Aulassa, odottaa aloitusta') +
-          ' · ' + p.players + '/12 pelaajaa</span></span>';
+          '<span class="tiedot"><span class="nimi"></span><span class="tila"></span></span>';
         var nappi = document.createElement('button');
         nappi.className = 'btn btn-small';
-        nappi.textContent = kaynnissa ? 'Täynnä peliä' : 'Liity';
-        nappi.disabled = kaynnissa || p.players >= 12;
         nappi.addEventListener('click', function () {
-          codeInput.value = p.code;
+          codeInput.value = li.dataset.code;
           joinFromInput();
         });
         li.appendChild(nappi);
         ul.appendChild(li);
-      });
+      }
+
+      li.querySelector('.nimi').textContent = p.host || 'Peli';
+      var tila = li.querySelector('.tila');
+      tila.className = 'tila ' + (kaynnissa ? 'kaynnissa' : 'aulassa');
+      tila.innerHTML =
+        (kaynnissa ? 'Käynnissä · kierros ' + p.round + '/' + p.rounds : 'Aulassa, odottaa aloitusta') +
+        ' · ' + p.players + '/12 pelaajaa' + (kaynnissa ? ' · <span class="arvio"></span>' : '');
+
+      var b = li.querySelector('button');
+      b.textContent = kaynnissa ? 'Käynnissä' : (taynna ? 'Täynnä' : 'Liity');
+      b.disabled = !!(kaynnissa || taynna);
+      b.title = kaynnissa ? 'Peliin pääsee mukaan vasta kun se palaa aulaan' : '';
+      p._rivi = li;
     });
+
+    Object.keys(vanhat).forEach(function (k) { ul.removeChild(vanhat[k]); });   // päättyneet pois
+    paivitaArviot();
   }
 
-  $('btnRefresh').addEventListener('click', haeAvoimetPelit);
-  if (!urlCode) setTimeout(haeAvoimetPelit, 300);
+  function kaynnistaListaus() {
+    if (vahti) return;
+    $('openNote').textContent = 'Haetaan avoimia pelejä…';
+    vahti = link.watchPublic(piirraLista);       // yhteys jää auki: tiedot päivittyvät itsestään
+    arvioAjastin = setInterval(paivitaArviot, 1000);
+  }
+
+  function lopetaListaus() {
+    if (vahti) { vahti.stop(); vahti = null; }
+    clearInterval(arvioAjastin);
+    arvioAjastin = null;
+  }
+
+  function haeAvoimetPelit() {
+    if (vahti) vahti.rescan();
+    else kaynnistaListaus();
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) lopetaListaus();
+    else if ($('screen-home').classList.contains('active')) kaynnistaListaus();
+  });
+
+  if (!urlCode) setTimeout(kaynnistaListaus, 300);
 
   // Linkillä tai QR-koodilla tullut liitetään suoraan aulaan.
   if (urlCode) {
@@ -208,9 +272,10 @@
       if (!julkinenPaalla) {
         julkinenPaalla = true;
         link.publishPublic(function () {
+          var e = link.engine;
           var st = S.state || {};
           var isanta = (st.players || []).filter(function (p) { return p.id === st.hostId; })[0];
-          return {
+          var tiedot = {
             code: S.code,
             host: isanta ? isanta.name + ':n peli' : 'Peli',
             players: (st.players || []).length,
@@ -218,6 +283,17 @@
             round: st.round,
             rounds: st.rounds
           };
+          if (e) {
+            tiedot.players = e.players.size;
+            tiedot.phase = e.phase;
+            tiedot.round = e.round;
+            tiedot.rounds = e.settings.rounds;
+            tiedot.drawTime = e.settings.drawTime;
+            tiedot.turnIndex = e.turnIndex;
+            tiedot.order = e.order.length || e.players.size;
+            tiedot.turnLeft = e.endsAt ? Math.max(0, Math.round((e.endsAt - Date.now()) / 1000)) : 0;
+          }
+          return tiedot;
         });
         addToast('Peli näkyy nyt aloitussivun listassa', 'good');
       }
@@ -912,10 +988,17 @@
   }
 
   /* apuri virheenetsintään ja testeihin (ei vaikuta peliin) */
-  window.__pja = { link: link, board: board, fitViewport: fitViewport, state: function () { return S; } };
+  window.__pja = {
+    link: link, board: board, fitViewport: fitViewport,
+    refreshOpen: haeAvoimetPelit,
+    state: function () { return S; }
+  };
 
   /* ilmoita poistumisesta heti, jotta muut näkevät sen viiveettä */
-  window.addEventListener('pagehide', function () { link.leave(); });
+  window.addEventListener('pagehide', function () {
+    lopetaListaus();      // vapautetaan myös listauksen yhteydet heti
+    link.leave();
+  });
 
   /* varoita hostia välilehden sulkemisesta kesken pelin */
   window.addEventListener('beforeunload', function (e) {

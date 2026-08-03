@@ -338,8 +338,18 @@ var CONNECT_TIMEOUT = 15000;
         self.openPeer = peer;
         peer.on('connection', function (conn) {
           conn.on('open', function () {
-            try { conn.send({ e: 'gameinfo', d: self._infoFn ? self._infoFn() : null }); } catch (e) {}
-            setTimeout(function () { try { conn.close(); } catch (e) {} }, 1500);
+            // yhteys pidetään auki ja tiedot työnnetään sekunnin välein,
+            // jolloin aloitussivun lista pysyy koko ajan ajan tasalla
+            var lähetä = function () {
+              try { conn.send({ e: 'gameinfo', d: self._infoFn ? self._infoFn() : null }); } catch (e) {}
+            };
+            lähetä();
+            var iv = setInterval(function () {
+              if (!self._infoFn) { clearInterval(iv); try { conn.close(); } catch (e) {} return; }
+              lähetä();
+            }, 1000);
+            conn.on('close', function () { clearInterval(iv); });
+            conn.on('error', function () { clearInterval(iv); });
           });
         });
       });
@@ -404,6 +414,68 @@ var CONNECT_TIMEOUT = 15000;
       jäljellä--;
       if (jäljellä <= 0) lopeta();
     }
+  };
+
+  /* Aloitusnäyttö: pitää yhteyden auki kaikkiin paikkoihin ja saa päivitykset heti. */
+  Link.prototype.watchPublic = function (onChange) {
+    if (typeof root.Peer !== 'function') { onChange([]); return function () {}; }
+    var peer;
+    try { peer = new root.Peer(PEER_CONFIG); } catch (e) { onChange([]); return function () {}; }
+
+    var tiedot = {}, yhteydet = {}, elossa = true, skannaus = null;
+
+    function ilmoita() {
+      if (!elossa) return;
+      var lista = [];
+      Object.keys(tiedot).forEach(function (k) { if (tiedot[k]) lista.push(tiedot[k]); });
+      lista.sort(function (a, b) { return (b.players || 0) - (a.players || 0); });
+      onChange(lista);
+    }
+
+    function avaa(i) {
+      if (!elossa || yhteydet[i]) return;
+      var conn;
+      try { conn = peer.connect(OPEN_PREFIX + i, { serialization: 'json' }); } catch (e) { return; }
+      yhteydet[i] = conn;
+      var saatu = false;
+      var t = setTimeout(function () {
+        if (!saatu) { try { conn.close(); } catch (e) {} delete yhteydet[i]; }
+      }, OPEN_TIMEOUT);
+
+      conn.on('data', function (msg) {
+        if (!msg || msg.e !== 'gameinfo') return;
+        saatu = true;
+        clearTimeout(t);
+        tiedot[i] = msg.d || null;
+        ilmoita();
+      });
+      var pois = function () {
+        clearTimeout(t);
+        delete yhteydet[i];
+        if (tiedot[i]) { delete tiedot[i]; ilmoita(); }
+      };
+      conn.on('close', pois);
+      conn.on('error', pois);
+    }
+
+    function skannaa() { for (var i = 1; i <= OPEN_SLOTS; i++) avaa(i); }
+
+    peer.on('error', function () { ilmoita(); });
+    peer.on('open', function () {
+      skannaa();
+      // kerrotaan tyhjä tulos, jos yksikään paikka ei vastaa
+      setTimeout(ilmoita, OPEN_TIMEOUT + 300);
+    });
+    skannaus = setInterval(skannaa, 5000);   // etsitään uusia pelejä
+
+    return {
+      rescan: skannaa,
+      stop: function () {
+        elossa = false;
+        clearInterval(skannaus);
+        try { peer.destroy(); } catch (e) {}
+      }
+    };
   };
 
   root.Link = Link;
