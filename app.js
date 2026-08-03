@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.4.1';
+  var GAME_VERSION = '1.5.0';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();

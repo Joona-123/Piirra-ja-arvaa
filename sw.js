@@ -1,10 +1,10 @@
 /* Service worker: pitää pelin toimintakykyisenä ja hallitsee välimuistin version. */
-var VERSION = '1.4.1';
+var VERSION = '1.5.0';
 var CACHE = 'pja-' + VERSION;
 var FILES = [
   './', './index.html', './styles.css', './app.js', './engine.js', './net.js',
   './draw.js', './qr.js', './words.js', './version.json', './manifest.json',
-  './vendor/peerjs.min.js', './icons/icon-192.png', './icons/icon-512.png'
+  './vendor/peerjs.min.js', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'
 ];
 
 self.addEventListener('install', function (e) {

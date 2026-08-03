@@ -15,7 +15,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Piirrä ja arvaa">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -123,6 +124,7 @@
         <canvas id="overlay"></canvas>
         <div id="waitNote" class="wait-note"></div>
       </div>
+      <div id="toasts" class="toasts" aria-live="polite"></div>
     </div>
 
     <button id="btnTools" class="tool tools-toggle" hidden title="Näytä työkalut" aria-label="Näytä työkalut">
@@ -145,7 +147,6 @@
   </main>
 
   <aside class="side">
-    <div id="toasts" class="toasts" aria-live="polite"></div>
     <ul id="players" class="players"></ul>
     <form id="chatForm" class="chat-form" autocomplete="off">
       <input id="chatInput" type="text" maxlength="60" placeholder="Kirjoita arvaus…" aria-label="Arvaus">
