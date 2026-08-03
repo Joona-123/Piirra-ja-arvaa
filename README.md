@@ -58,8 +58,30 @@ tavallisella Node-palvelimella – mutta silloin tarvitaan taas palvelin, mitä 
 ja ensimmäinen oikein arvannut +40 bonusta. Piirtäjä saa 50–140 pistettä jokaisesta
 oikein arvanneesta. Jos yhteys katkeaa kesken pelin, samalla nimellä palaava saa pisteensä takaisin.
 
+**Kesken pelin liittyminen.** Kun peli on alkanut, mukaan pääsee vain se, joka oli pelissä
+aloitushetkellä – esimerkiksi jos yhteys katkesi. Tunnistus tapahtuu nimen perusteella:
+kirjoita täsmälleen sama nimi kuin aiemmin, niin saat pisteesi ja piirtovuorosi takaisin.
+Muut saavat selkeän ilmoituksen siitä, että peli on jo käynnissä.
+
+**Poistuminen.** Poistunut katoaa pelaajalistalta heti. Jos poistuja oli piirtäjä, vuoro
+päättyy automaattisesti, sana paljastetaan kaikille ja peli siirtyy seuraavaan vuoroon.
+
 Peli estää vahingossa tapahtuvat vuodot: piirtäjän ja jo oikein arvanneiden viestit näkyvät
 vain heille. Lähelle osunut arvaus kertoo arvaajalle yksityisesti "lähellä!".
+
+## Asennus puhelimen kotinäytölle
+
+Peli on asennettava selainsovellus (PWA). Avaa peli puhelimessa ja valitse selaimen valikosta
+**Lisää kotinäyttöön**. Sen jälkeen se avautuu omalla kuvakkeellaan ilman selaimen osoiterivia.
+Vaatii https-osoitteen, joten GitHub Pages käy sellaisenaan.
+
+## Versiot
+
+Versionumero näkyy aloitussivun alalaidassa ja on tallennettu kahteen paikkaan:
+`GAME_VERSION` tiedostossa `app.js`, `VERSION` tiedostossa `sw.js` sekä `version.json`.
+**Päivitä kaikki kolme samalla**, kun julkaiset muutoksia. Peli vertaa käynnissä olevaa
+versiota tiedostoon `version.json` ja tarjoaa vanhentuneelle pelaajalle päivitysnapin,
+joka tyhjentää välimuistin – pelaajan nimi säilyy.
 
 ## Omat sanat ja säädöt
 

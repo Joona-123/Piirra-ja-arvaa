@@ -3,6 +3,8 @@
 (function () {
   'use strict';
 
+  var GAME_VERSION = '1.2.0';
+
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
 
@@ -43,10 +45,19 @@
   if (urlCode) codeInput.value = urlCode.toUpperCase().slice(0, 4);
   (nameInput.value ? codeInput : nameInput).focus();
 
+  var NIMI_ETU = ['Nopea', 'Iloinen', 'Utelias', 'Rohkea', 'Unelias', 'Kepeä', 'Viekas', 'Reipas', 'Hurja', 'Sitkeä', 'Tyyni', 'Vikkelä'];
+  var NIMI_TAKA = ['Kettu', 'Norsu', 'Orava', 'Hylje', 'Karhu', 'Ilves', 'Mäyrä', 'Kotka', 'Susi', 'Saukko', 'Peippo', 'Hirvi'];
+
+  function arvottuNimi() {
+    return NIMI_ETU[Math.floor(Math.random() * NIMI_ETU.length)] + ' ' +
+           NIMI_TAKA[Math.floor(Math.random() * NIMI_TAKA.length)];
+  }
+
   function myName() {
-    var n = nameInput.value.trim();
+    var n = nameInput.value.trim() || arvottuNimi();
+    nameInput.value = n;
     localStorage.setItem('pja.name', n);
-    return n || 'Pelaaja';
+    return n;
   }
 
   function busy(on, btn, text) {
@@ -82,6 +93,12 @@
     });
   }
 
+  // Linkillä tai QR-koodilla tullut liitetään suoraan aulaan.
+  if (urlCode) {
+    homeError.textContent = 'Liitytään peliin ' + codeInput.value + '…';
+    setTimeout(joinFromInput, 60);
+  }
+
   function enterRoom(code) {
     S.me = link.me;
     S.code = code;
@@ -92,6 +109,17 @@
     if (link.isHost && link.engine) onState(link.engine.state());
     else if (S.state) onState(S.state);
   }
+
+  $('btnRename').addEventListener('click', function () {
+    var uusi = $('renameInput').value.trim();
+    if (!uusi) return;
+    localStorage.setItem('pja.name', uusi);
+    nameInput.value = uusi;
+    link.send('rename', { name: uusi });
+  });
+  $('renameInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); $('btnRename').click(); }
+  });
 
   $('btnLeave').addEventListener('click', function () {
     link.leave();
@@ -160,6 +188,9 @@
       list.appendChild(li);
     });
     $('lobbyCount').textContent = st.players.length + '/12';
+
+    var oma = st.players.filter(function (p) { return p.id === S.me; })[0];
+    if (oma && document.activeElement !== $('renameInput')) $('renameInput').value = oma.name;
 
     var isHost = st.hostId === S.me;
     setRounds.disabled = setTime.disabled = !isHost;
@@ -262,7 +293,26 @@
   buildTools();
 
   $('btnUndo').addEventListener('click', function () { link.send('undo'); });
-  $('btnClear').addEventListener('click', function () { link.send('clearCanvas'); });
+  var clearArmed = null;
+  $('btnClear').addEventListener('click', function () {
+    var btn = this;
+    if (clearArmed) {                       // toinen painallus 5 s sisällä
+      clearTimeout(clearArmed);
+      clearArmed = null;
+      btn.classList.remove('armed');
+      btn.title = 'Tyhjennä';
+      link.send('clearCanvas');
+      return;
+    }
+    btn.classList.add('armed');
+    btn.title = 'Paina uudelleen: tyhjentää koko piirroksen';
+    addToast('Paina uudelleen, niin koko piirros pyyhkiytyy', 'bad');
+    clearArmed = setTimeout(function () {
+      clearArmed = null;
+      btn.classList.remove('armed');
+      btn.title = 'Tyhjennä';
+    }, 5000);
+  });
 
   /* ---------------- HUD ---------------- */
 
@@ -304,6 +354,7 @@
         '<span class="pts">' + p.score + ' p' + (p.guessed ? ' ✓' : '') + '</span>';
       ul.appendChild(li);
     });
+    repositionBubbles();
   }
 
   /* ---------------- chat ja kuplat ---------------- */
@@ -323,6 +374,28 @@
     toasts.appendChild(t);
     while (toasts.children.length > 3) toasts.removeChild(toasts.firstChild);
     setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4000);
+  }
+
+  /* kuplat pysyvät pelaajakortin kohdalla myös kun asettelu muuttuu */
+  function repositionBubbles() {
+    var kuplat = document.querySelectorAll('.name-bubble');
+    for (var i = 0; i < kuplat.length; i++) sijoitaKupla(kuplat[i]);
+  }
+
+  function sijoitaKupla(b) {
+    var id = b.getAttribute('data-player');
+    var card = null, cards = $('players').children;
+    for (var i = 0; i < cards.length; i++) if (cards[i].dataset.id === id) card = cards[i];
+    if (!card) { if (b.parentNode) b.parentNode.removeChild(b); return; }
+    var r = card.getBoundingClientRect();
+    var s = b.getBoundingClientRect();
+    var w = s.width || 120, h = s.height || 28;
+    var left = Math.max(6, Math.min((window.innerWidth || 360) - w - 6, r.left + r.width / 2 - w / 2));
+    var top = r.top - h - 10;
+    b.classList.remove('below');
+    if (top < 4) { top = r.bottom + 8; b.classList.add('below'); }
+    b.style.left = Math.round(left) + 'px';
+    b.style.top = Math.round(top) + 'px';
   }
 
   /* poistaa kaikki kuplat kerralla (esim. kun vuoro päättyy) */
@@ -379,6 +452,11 @@
     S.phase = st.phase;
     S.isDrawer = st.drawerId === S.me;
 
+    if (st.phase === 'countdown') {
+      renderLobby(st);
+      return;
+    }
+
     if (st.phase === 'lobby') {
       renderLobby(st);
       if ($('screen-game').classList.contains('active')) { show('screen-lobby'); closeModal(); }
@@ -388,7 +466,8 @@
     if (!$('screen-game').classList.contains('active') && st.phase !== 'gameend') show('screen-game');
 
     // uusi vuoro alkoi -> edellisen vuoron tulosruutu pois, muuten peli näyttää jumittuneen
-    if ((st.phase === 'choose' || st.phase === 'draw') && S.modalKind === 'turnend') closeModal();
+    if ((st.phase === 'choose' || st.phase === 'draw') &&
+        (S.modalKind === 'turnend' || S.modalKind === 'countdown')) closeModal();
 
     $('roundLabel').textContent = 'Kierros\n' + st.round + '/' + st.rounds;
     renderPlayers(st);
@@ -420,8 +499,15 @@
     }
 
     if (st.secondsLeft) setTimer(st.secondsLeft, S.total);
+    updateOrientation();
   }
   link.on('state', onState);
+
+  link.on('countdown', function (d) {
+    S.total = d.seconds || 5;
+    openModal('<h2>Peli alkaa!</h2><div class="countdown" id="countNum">' + S.total + '</div>' +
+      '<p class="hint">Valmistautukaa…</p>', 'countdown');
+  });
 
   link.on('lobby', function () { closeModal(); show('screen-lobby'); });
 
@@ -429,6 +515,8 @@
     setTimer(d.secondsLeft, S.total);
     var bar = document.querySelector('.choose-bar i');
     if (bar) bar.style.width = Math.round((d.secondsLeft / 10) * 100) + '%';
+    var num = $('countNum');
+    if (num) num.textContent = d.secondsLeft > 0 ? d.secondsLeft : 'Nyt!';
   });
 
   link.on('choices', function (d) {
@@ -509,6 +597,36 @@
 
   /* ---------------- näkyvän alueen sovitus (puhelimen näppäimistö) ---------------- */
 
+  // Piirtoalue mitoitetaan aina 4:3-suhteessa, ei koskaan venytetä yhteen suuntaan.
+  function fitSheet() {
+    var holder = document.querySelector('.pad-holder');
+    var sheet = $('sheet');
+    if (!holder || !sheet) return;
+    var w = holder.clientWidth, h = holder.clientHeight;
+    if (!w || !h) return;
+    var leveys = Math.min(w, h * 4 / 3);
+    var korkeus = leveys * 3 / 4;
+    sheet.style.width = Math.floor(leveys) + 'px';
+    sheet.style.height = Math.floor(korkeus) + 'px';
+    if (board) board.resize();
+    repositionBubbles();
+  }
+
+  // Puhelin vaaka-asennossa: piirtäjälle pelkkä piirtoalue koko ruudulle.
+  function updateOrientation() {
+    var vaaka = window.matchMedia && window.matchMedia('(orientation: landscape)').matches;
+    var pieni = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 600;
+    var full = !!(vaaka && pieni && S.isDrawer && S.phase === 'draw');
+    document.body.classList.toggle('drawfull', full);
+    $('btnTools').hidden = !full;
+    if (!full) document.body.classList.remove('tools-open');
+    fitSheet();
+  }
+
+  $('btnTools').addEventListener('click', function () {
+    document.body.classList.toggle('tools-open');
+  });
+
   function fitViewport() {
     var vv = window.visualViewport || null;      // luetaan aina uudestaan
     var full = window.innerHeight || 0;
@@ -517,7 +635,12 @@
     // näppäimistö vie yli 15 % korkeudesta -> tiivistetty tila
     var keyboard = !!full && h < full - full * 0.15;
     document.body.classList.toggle('keyboard', keyboard);
-    if (board) board.resize();
+    // näppäimistön kanssa pelaajakortit siirtyvät piirtoalueen reunoille
+    var players = $('players');
+    var koti = keyboard ? document.querySelector('.stage') : document.querySelector('.side');
+    if (players.parentNode !== koti) koti.insertBefore(players, koti.firstChild);
+    updateOrientation();
+    fitSheet();
   }
 
   if (window.visualViewport) {
@@ -526,6 +649,10 @@
   }
   window.addEventListener('resize', fitViewport);
   window.addEventListener('orientationchange', function () { setTimeout(fitViewport, 250); });
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(orientation: landscape)');
+    if (mq.addEventListener) mq.addEventListener('change', function () { setTimeout(fitViewport, 100); });
+  }
   fitViewport();
 
   // kenttään kirjoitettaessa pidetään näkymä paikallaan
@@ -533,6 +660,51 @@
     setTimeout(function () { window.scrollTo(0, 0); fitViewport(); }, 120);
   });
   $('chatInput').addEventListener('blur', function () { setTimeout(fitViewport, 150); });
+
+  /* ---------------- versio, välimuisti ja sovellusasennus ---------------- */
+
+  $('versionText').textContent = GAME_VERSION;
+
+  function nollaaVälimuisti() {
+    var nimi = localStorage.getItem('pja.name');
+    try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+    if (nimi) localStorage.setItem('pja.name', nimi);      // nimi säilyy
+    var lopuksi = function () { location.reload(); };
+    var työt = [];
+    if (window.caches && caches.keys) {
+      työt.push(caches.keys().then(function (ks) {
+        return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+      }));
+    }
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      työt.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+        return Promise.all(rs.map(function (r) { return r.unregister(); }));
+      }));
+    }
+    Promise.all(työt).then(lopuksi, lopuksi);
+  }
+
+  $('btnUpdate').addEventListener('click', nollaaVälimuisti);
+
+  // Verrataan käynnissä olevaa versiota siihen, mikä palvelimella on juuri nyt.
+  function tarkistaVersio() {
+    if (!window.fetch) return;
+    fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (data && data.version && data.version !== GAME_VERSION) {
+          $('updateBox').hidden = false;
+          $('updateBox').querySelector('p').textContent =
+            'Käytössä on vanha versio (' + GAME_VERSION + '). Uusin on ' + data.version + '.';
+        }
+      })
+      .catch(function () {});
+  }
+  tarkistaVersio();
+
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
 
   /* apuri virheenetsintään ja testeihin (ei vaikuta peliin) */
   window.__pja = { link: link, board: board, fitViewport: fitViewport, state: function () { return S; } };

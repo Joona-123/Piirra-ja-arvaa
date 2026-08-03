@@ -10,6 +10,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&family=Special+Elite&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Piirrä ja arvaa">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -44,8 +50,14 @@
       <p id="homeError" class="error" role="alert"></p>
     </div>
 
+    <div id="updateBox" class="update-box" hidden>
+      <p>Käytössä on vanha versio.</p>
+      <button id="btnUpdate" class="btn btn-small">Päivitä peli</button>
+    </div>
+
     <p class="fineprint">Toimii puhelimella ja tietokoneella. 2–12 pelaajaa.<br>Peli kulkee suoraan laitteiden välillä – palvelinta ei tarvita.</p>
   </div>
+  <p class="version">versio <span id="versionText">–</span></p>
 </section>
 
 <!-- ============ AULA ============ -->
@@ -61,6 +73,10 @@
 
     <div class="card lobby-players">
       <h2>Pelaajat <span id="lobbyCount" class="count"></span></h2>
+      <div class="rename-row">
+        <input id="renameInput" type="text" maxlength="16" aria-label="Oma nimi">
+        <button id="btnRename" class="btn btn-small">Vaihda nimi</button>
+      </div>
       <ul id="lobbyPlayers" class="notes"></ul>
     </div>
 
@@ -102,13 +118,16 @@
 
   <main class="stage">
     <div class="pad-holder">
-      <div class="spiral" aria-hidden="true"></div>
       <div class="sheet" id="sheet">
         <canvas id="base"></canvas>
         <canvas id="overlay"></canvas>
         <div id="waitNote" class="wait-note"></div>
       </div>
     </div>
+
+    <button id="btnTools" class="tool tools-toggle" hidden title="Näytä työkalut" aria-label="Näytä työkalut">
+      <svg viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>
+    </button>
 
     <div id="tools" class="tools" hidden>
       <div class="tool-row" id="toolButtons"></div>

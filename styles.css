@@ -132,6 +132,15 @@ input:focus{ outline:none; border-bottom-style:solid; }
 #btnCreate{ width:100%; }
 .fineprint{ text-align:center; color:var(--ink-soft); font-size:.9rem; margin-top:14px; }
 
+.version{ text-align:center; color:var(--ink-soft); font-size:.8rem; margin:10px 0 0; opacity:.75; }
+.update-box{
+  margin-top:12px; padding:10px; text-align:center;
+  background:#fdf0d5; border:2.5px dashed var(--red); border-radius:10px;
+}
+.update-box p{ margin:0 0 8px; color:var(--red); }
+.rename-row{ display:flex; gap:8px; align-items:flex-end; margin:6px 0 12px; }
+.rename-row input{ flex:1 1 auto; }
+
 /* ================= AULA ================= */
 
 #screen-lobby{
@@ -192,14 +201,14 @@ input:focus{ outline:none; border-bottom-style:solid; }
 #screen-game{
   position:relative; z-index:2;
   height:var(--app-h, 100dvh);
-  flex-direction:column; padding:8px; gap:8px; overflow:hidden;
+  flex-direction:column; padding:5px; gap:4px; overflow:hidden;
 }
 
 .hud{
-  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px;
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:8px;
   background:var(--paper-lit);
   border:2.5px solid var(--ink); border-radius:var(--wobble);
-  padding:6px 12px; box-shadow:var(--shadow);
+  padding:3px 10px; box-shadow:var(--shadow);
   flex:0 0 auto;
 }
 .hud-round{ font-family:var(--font-stamp); font-size:.8rem; line-height:1.15; max-width:78px; color:var(--ink-soft); white-space:pre-line; }
@@ -227,9 +236,9 @@ input:focus{ outline:none; border-bottom-style:solid; }
 .hud-timer.low .ring-fill{ stroke:var(--red); }
 #timerText{ font-family:var(--font-stamp); font-size:1.05rem; }
 
-.stage{ flex:1 1 auto; display:flex; flex-direction:column; gap:8px; min-width:0; min-height:0; }
+.stage{ position:relative; flex:1 1 auto; display:flex; flex-direction:column; gap:4px; min-width:0; min-height:0; }
 
-.pad-holder{ position:relative; padding-top:14px; display:flex; justify-content:center; flex:1 1 auto; min-height:0; }
+.pad-holder{ position:relative; display:flex; align-items:center; justify-content:center; flex:1 1 auto; min-height:0; }
 .spiral{
   position:absolute; top:0; left:14px; right:14px; height:20px;
   background-image:radial-gradient(circle at 6px 8px, transparent 4px, var(--ink) 4px, var(--ink) 5.5px, transparent 6px);
@@ -238,7 +247,7 @@ input:focus{ outline:none; border-bottom-style:solid; }
 .sheet{
   position:relative;
   aspect-ratio:4/3;
-  height:100%; width:auto; max-width:100%; max-height:100%;
+  /* koko asetetaan JS:llä 4:3-suhteessa */
   background-color:#fffdf5;
   background-image:radial-gradient(rgba(35,32,29,.10) 1px, transparent 1px);
   background-size:22px 22px;
@@ -275,9 +284,9 @@ input:focus{ outline:none; border-bottom-style:solid; }
 
 .tools{
   background:var(--paper-lit); border:2.5px solid var(--ink); border-radius:var(--wobble2);
-  box-shadow:var(--shadow); padding:8px; display:flex; flex-direction:column; gap:8px;
+  box-shadow:var(--shadow); padding:5px; display:flex; flex-direction:column; gap:5px;
 }
-.tool-row{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:center; }
+.tool-row{ display:flex; gap:5px; align-items:center; flex-wrap:wrap; justify-content:center; }
 .tool{
   width:38px; height:38px; padding:0; display:grid; place-items:center;
   background:var(--paper-lit); border:2.5px solid var(--ink); border-radius:9px 6px 10px 5px;
@@ -286,6 +295,9 @@ input:focus{ outline:none; border-bottom-style:solid; }
 .tool svg{ width:21px; height:21px; fill:none; stroke:var(--ink); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .tool svg .fill{ fill:var(--ink); }
 .tool.on{ background:var(--yellow); transform:translateY(-2px) rotate(-2deg); }
+.tool.armed{ background:var(--red); border-color:var(--red); animation:sykki .7s ease-in-out infinite; }
+.tool.armed svg{ stroke:#fff; }
+@keyframes sykki{ 0%,100%{ transform:scale(1) } 50%{ transform:scale(1.12) } }
 .tool:active{ transform:translateY(2px); }
 
 .swatch{ width:30px; height:30px; border:2.5px solid var(--ink); border-radius:50%; cursor:pointer; padding:0; }
@@ -300,18 +312,20 @@ input:focus{ outline:none; border-bottom-style:solid; }
 
 /* ---------- sivupalkki ---------- */
 
-.side{ flex:0 0 auto; display:flex; flex-direction:column; gap:6px; min-height:0; }
+.side{ flex:0 0 auto; display:flex; flex-direction:column; gap:4px; min-height:0; }
 
 .players{
-  list-style:none; margin:0; padding:2px; display:flex; gap:8px; overflow-x:auto; flex:0 0 auto;
+  list-style:none; margin:0; padding:0; flex:0 0 auto;
+  display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:4px;
 }
 .players li{
-  flex:0 0 auto; min-width:92px;
-  background:var(--paper-lit); border:2.5px solid var(--ink); border-radius:10px 4px 12px 6px;
-  padding:5px 9px; font-size:.9rem; line-height:1.2; box-shadow:2px 2px 0 rgba(35,32,29,.15);
+  min-width:0;
+  background:var(--paper-lit); border:2px solid var(--ink); border-radius:8px 3px 9px 4px;
+  padding:2px 5px; font-size:.72rem; line-height:1.15; box-shadow:1px 2px 0 rgba(35,32,29,.15);
+  text-align:center;
 }
-.players li b{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:110px; }
-.players li .pts{ font-family:var(--font-stamp); font-size:.85rem; color:var(--ink-soft); }
+.players li b{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:normal; }
+.players li .pts{ font-family:var(--font-stamp); font-size:.68rem; color:var(--ink-soft); }
 .players li.drawer{ background:var(--yellow); }
 .players li.guessed{ border-color:var(--green); background:#e5f4e7; }
 .players li.me b{ text-decoration:underline wavy var(--red) 1.5px; }
@@ -341,12 +355,43 @@ input:focus{ outline:none; border-bottom-style:solid; }
 }
 .chat-form.hidden{ display:none; }
 
+/* ---------- vaaka-asento: piirtäjälle pelkkä piirtoalue ---------- */
+
+body.drawfull .hud,
+body.drawfull .side,
+body.drawfull .toasts{ display:none !important; }
+body.drawfull #screen-game{ padding:0; gap:0; }
+body.drawfull .stage{ gap:0; }
+body.drawfull .pad-holder{ padding:0; }
+body.drawfull .sheet{ border-width:2px; border-radius:0; }
+
+.tools-toggle{
+  position:absolute; right:6px; bottom:6px; z-index:14;
+  background:var(--paper-lit); opacity:.9;
+}
+body.drawfull .tools{
+  position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
+  z-index:13; max-width:96vw; opacity:.96; display:none;
+}
+body.drawfull.tools-open .tools{ display:flex; }
+
+/* ---------- näppäimistö auki: pelaajat piirtoalueen reunoille ---------- */
+
+body.keyboard .stage .players{
+  position:absolute; inset:0; z-index:6;
+  display:flex; flex-flow:column wrap; align-content:space-between;
+  justify-content:flex-start; gap:3px;
+  pointer-events:none; padding:0;
+}
+body.keyboard .stage .players li{
+  width:clamp(52px, 17vw, 78px); max-height:calc((100% - 18px) / 6);
+  font-size:.65rem; padding:1px 4px;
+}
+
 /* näppäimistö auki: karsitaan kaikki ylimääräinen, jotta sana, piirros ja kenttä mahtuvat */
-body.keyboard .players li{ padding:2px 7px; font-size:.8rem; min-width:0; }
 body.keyboard .players li .pts{ display:none; }
 body.keyboard .toasts{ display:none; }
-body.keyboard .spiral{ display:none; }
-body.keyboard .pad-holder{ padding-top:0; }
+
 body.keyboard .hud{ padding:2px 10px; }
 body.keyboard .hud-round{ display:none; }
 body.keyboard #screen-game{ gap:5px; padding:5px; }
@@ -373,6 +418,10 @@ body.keyboard #screen-game{ gap:5px; padding:5px; }
   .side{ min-height:0; }
   .players{ flex-wrap:wrap; overflow:visible; }
   .players li{ flex:1 1 44%; }
+}
+
+.countdown{
+  font-family:var(--font-stamp); font-size:4rem; color:var(--red); line-height:1.1; margin:8px 0;
 }
 
 /* ---------- lyhyet ilmoitukset ---------- */

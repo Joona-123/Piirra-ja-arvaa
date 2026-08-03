@@ -6,6 +6,7 @@
   'use strict';
 
   var CHOOSE_SECONDS = 10;
+  var START_COUNTDOWN = 5;      // sekuntia hostin napin painalluksesta pelin alkuun
   var TURN_END_SECONDS = 6;
   var MAX_PLAYERS = 12;
   var MAX_OPS = 4000;
@@ -254,6 +255,25 @@
 
   /* ---------------- pelin kulku ---------------- */
 
+  /* Peli ei ala heti napin painalluksesta: kaikki ehtivät asettua. */
+  Engine.prototype.startCountdown = function () {
+    var self = this;
+    var seconds = START_COUNTDOWN;
+    this.phase = 'countdown';
+    this.broadcast();
+    this.io.all('countdown', { seconds: seconds });
+    this.stopTimers();
+    this.endsAt = Date.now() + seconds * 1000;
+    this.interval = setInterval(function () {
+      var left = Math.max(0, Math.round((self.endsAt - Date.now()) / 1000));
+      self.io.all('tick', { secondsLeft: left });
+      if (left <= 0) {
+        self.stopTimers();
+        self.start();
+      }
+    }, 250);
+  };
+
   Engine.prototype.start = function () {
     if (this.players.size < 2) return;
     this.players.forEach(function (p) { p.score = 0; });
@@ -428,7 +448,22 @@
         if (this.players.size < 2) {
           return this.io.to(id, 'chat', { kind: 'system', text: 'Peliin tarvitaan vähintään 2 pelaajaa.', tone: 'bad' });
         }
-        return this.start();
+        return this.startCountdown();
+
+      case 'rename':
+        if (this.phase !== 'lobby' && this.phase !== 'countdown' && this.phase !== 'gameend') return;
+        var toivottu = cleanName(data.name);
+        if (!toivottu || toivottu.toLowerCase() === player.name.toLowerCase()) return;
+        var otetut = false;
+        this.players.forEach(function (p) {
+          if (p.id !== id && p.name.toLowerCase() === toivottu.toLowerCase()) otetut = true;
+        });
+        if (otetut) {
+          return this.io.to(id, 'chat', { kind: 'system', text: 'Nimi on jo käytössä.', tone: 'bad' });
+        }
+        this.sys(player.name + ' on nyt ' + toivottu + '.', 'info');
+        player.name = toivottu;
+        return this.broadcast();
 
       case 'backToLobby':
         if (isHost) this.backToLobby();
