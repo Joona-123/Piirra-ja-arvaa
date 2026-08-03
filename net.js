@@ -50,6 +50,19 @@ var CONNECT_TIMEOUT = 15000;
   var MISSING_LIB = 'Peliä ei voitu avata: yhteyskirjasto vendor/peerjs.min.js ei latautunut. ' +
     'Varmista, että kansio vendor/ tiedostoineen on viety GitHubiin.';
 
+  /* ---------------------------------------------------------------
+     Julkiset pelit ilman palvelinta.
+
+     Varataan kahdeksan kiinteää tunnusta (pja-open-1 … pja-open-8).
+     Julkiseksi merkitty peli ottaa haltuunsa ensimmäisen vapaan ja
+     vastaa siihen otettuihin yhteyksiin pelin tiedoilla. Aloitusnäyttö
+     kokeilee kaikkia paikkoja ja listaa ne, jotka vastaavat. Kun peli
+     päättyy tai isäntä poistuu, tunnus vapautuu itsestään.
+     --------------------------------------------------------------- */
+  var OPEN_SLOTS = 8;
+  var OPEN_PREFIX = 'pja-open-';
+  var OPEN_TIMEOUT = 3000;
+
   function Link() {
     this.handlers = {};
     this.isHost = false;
@@ -290,6 +303,7 @@ var CONNECT_TIMEOUT = 15000;
   };
 
   Link.prototype.leave = function () {
+    this.unpublishPublic();
     this.closed = true;
     if (this.engine) this.engine.destroy();
     try { if (this.peer) this.peer.destroy(); } catch (e) {}
@@ -304,6 +318,93 @@ var CONNECT_TIMEOUT = 15000;
     if (type === 'disconnected') return 'Yhteys katkesi. Yritä uudelleen.';
     return 'Yhteysvirhe: ' + (err && (err.message || err.type) || 'tuntematon');
   }
+
+  /* Isäntä: julkaisee pelin ilmoitustaululle. getInfo palauttaa tuoreet tiedot. */
+  Link.prototype.publishPublic = function (getInfo) {
+    var self = this;
+    this.unpublishPublic();
+    this._infoFn = getInfo;
+    var slot = 1;
+
+    function yritä() {
+      if (slot > OPEN_SLOTS || !self._infoFn) return;
+      var id = OPEN_PREFIX + slot;
+      var peer;
+      try { peer = new root.Peer(id, PEER_CONFIG); } catch (e) { return; }
+      var ratkaistu = false;
+
+      peer.on('open', function () {
+        ratkaistu = true;
+        self.openPeer = peer;
+        peer.on('connection', function (conn) {
+          conn.on('open', function () {
+            try { conn.send({ e: 'gameinfo', d: self._infoFn ? self._infoFn() : null }); } catch (e) {}
+            setTimeout(function () { try { conn.close(); } catch (e) {} }, 1500);
+          });
+        });
+      });
+
+      peer.on('error', function (err) {
+        if (ratkaistu) return;
+        ratkaistu = true;
+        try { peer.destroy(); } catch (e) {}
+        if (err && err.type === 'unavailable-id') { slot++; yritä(); }   // paikka varattu, kokeillaan seuraavaa
+      });
+    }
+    yritä();
+  };
+
+  Link.prototype.unpublishPublic = function () {
+    this._infoFn = null;
+    if (this.openPeer) {
+      try { this.openPeer.destroy(); } catch (e) {}
+      this.openPeer = null;
+    }
+  };
+
+  /* Aloitusnäyttö: kysyy kaikilta paikoilta, ketkä ovat auki. */
+  Link.prototype.browsePublic = function (cb) {
+    if (typeof root.Peer !== 'function') return cb([]);
+    var peer;
+    try { peer = new root.Peer(PEER_CONFIG); } catch (e) { return cb([]); }
+
+    var löydetyt = [], jäljellä = OPEN_SLOTS, valmis = false;
+
+    function lopeta() {
+      if (valmis) return;
+      valmis = true;
+      try { peer.destroy(); } catch (e) {}
+      löydetyt.sort(function (a, b) { return (b.players || 0) - (a.players || 0); });
+      cb(löydetyt);
+    }
+
+    peer.on('error', function () {});
+    peer.on('open', function () {
+      for (var i = 1; i <= OPEN_SLOTS; i++) kysy(OPEN_PREFIX + i);
+    });
+    setTimeout(lopeta, OPEN_TIMEOUT + 500);
+
+    function kysy(id) {
+      var conn;
+      try { conn = peer.connect(id, { serialization: 'json' }); } catch (e) { return valmiiksi(); }
+      var saatu = false;
+      var t = setTimeout(function () { if (!saatu) { try { conn.close(); } catch (e) {} valmiiksi(); } }, OPEN_TIMEOUT);
+      conn.on('data', function (msg) {
+        if (saatu || !msg || msg.e !== 'gameinfo') return;
+        saatu = true;
+        clearTimeout(t);
+        if (msg.d && msg.d.code) löydetyt.push(msg.d);
+        try { conn.close(); } catch (e) {}
+        valmiiksi();
+      });
+      conn.on('error', function () { if (!saatu) { saatu = true; clearTimeout(t); valmiiksi(); } });
+    }
+
+    function valmiiksi() {
+      jäljellä--;
+      if (jäljellä <= 0) lopeta();
+    }
+  };
 
   root.Link = Link;
   root.randomCode = randomCode;

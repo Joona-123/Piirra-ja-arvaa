@@ -51,6 +51,12 @@
       <p id="homeError" class="error" role="alert"></p>
     </div>
 
+    <div class="pad card open-games">
+      <h2>Avoimet pelit <button id="btnRefresh" class="btn btn-small" title="Päivitä">Päivitä</button></h2>
+      <ul id="openGames" class="open-list"></ul>
+      <p id="openNote" class="hint">Haetaan…</p>
+    </div>
+
     <div id="updateBox" class="update-box" hidden>
       <p>Käytössä on vanha versio.</p>
       <button id="btnUpdate" class="btn btn-small">Päivitä peli</button>
@@ -88,8 +94,12 @@
         <input id="setRounds" type="range" min="1" max="10" step="1" value="3">
       </label>
       <label class="field slider">
-        <span>Piirtoaika: <b id="timeValue">80</b> s</span>
-        <input id="setTime" type="range" min="30" max="180" step="10" value="80">
+        <span>Piirtoaika: <b id="timeValue">80 s</b></span>
+        <input id="setTime" type="range" min="20" max="300" step="10" value="80">
+      </label>
+      <label class="field toggle">
+        <input id="setPublic" type="checkbox">
+        <span>Näytä peli aloitussivun avoimissa peleissä</span>
       </label>
       <p class="turns-note" id="turnsNote"></p>
       <button id="btnStart" class="btn btn-primary">Aloita peli</button>

@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.7.0';
+  var GAME_VERSION = '1.8.0';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -125,6 +125,48 @@
     });
   }
 
+  var haetaan = false;
+  function haeAvoimetPelit() {
+    if (haetaan) return;
+    haetaan = true;
+    $('openNote').textContent = 'Haetaan avoimia pelejä…';
+    $('btnRefresh').disabled = true;
+    link.browsePublic(function (pelit) {
+      haetaan = false;
+      $('btnRefresh').disabled = false;
+      var ul = $('openGames');
+      ul.innerHTML = '';
+      if (!pelit.length) {
+        $('openNote').textContent = 'Ei avoimia pelejä juuri nyt. Luo oma ja jaa koodi kavereille.';
+        return;
+      }
+      $('openNote').textContent = '';
+      pelit.forEach(function (p) {
+        var kaynnissa = p.phase && p.phase !== 'lobby' && p.phase !== 'countdown';
+        var li = document.createElement('li');
+        li.innerHTML =
+          '<span class="koodi">' + escapeHtml(p.code) + '</span>' +
+          '<span class="tiedot"><span class="nimi">' + escapeHtml(p.host || 'Peli') + '</span>' +
+          '<span class="tila ' + (kaynnissa ? 'kaynnissa' : 'aulassa') + '">' +
+          (kaynnissa ? 'Käynnissä · kierros ' + p.round + '/' + p.rounds : 'Aulassa, odottaa aloitusta') +
+          ' · ' + p.players + '/12 pelaajaa</span></span>';
+        var nappi = document.createElement('button');
+        nappi.className = 'btn btn-small';
+        nappi.textContent = kaynnissa ? 'Täynnä peliä' : 'Liity';
+        nappi.disabled = kaynnissa || p.players >= 12;
+        nappi.addEventListener('click', function () {
+          codeInput.value = p.code;
+          joinFromInput();
+        });
+        li.appendChild(nappi);
+        ul.appendChild(li);
+      });
+    });
+  }
+
+  $('btnRefresh').addEventListener('click', haeAvoimetPelit);
+  if (!urlCode) setTimeout(haeAvoimetPelit, 300);
+
   // Linkillä tai QR-koodilla tullut liitetään suoraan aulaan.
   if (urlCode) {
     homeError.textContent = 'Liitytään peliin ' + codeInput.value + '…';
@@ -158,6 +200,33 @@
       location.href = location.pathname;
     });
   });
+
+  var julkinenPaalla = false;
+  function paivitaJulkisuus() {
+    if (!link.isHost) return;
+    if ($('setPublic').checked) {
+      if (!julkinenPaalla) {
+        julkinenPaalla = true;
+        link.publishPublic(function () {
+          var st = S.state || {};
+          var isanta = (st.players || []).filter(function (p) { return p.id === st.hostId; })[0];
+          return {
+            code: S.code,
+            host: isanta ? isanta.name + ':n peli' : 'Peli',
+            players: (st.players || []).length,
+            phase: st.phase,
+            round: st.round,
+            rounds: st.rounds
+          };
+        });
+        addToast('Peli näkyy nyt aloitussivun listassa', 'good');
+      }
+    } else if (julkinenPaalla) {
+      julkinenPaalla = false;
+      link.unpublishPublic();
+    }
+  }
+  $('setPublic').addEventListener('change', paivitaJulkisuus);
 
   $('btnRename').addEventListener('click', function () {
     var uusi = $('renameInput').value.trim();
@@ -207,13 +276,20 @@
   [setRounds, setTime].forEach(function (el) {
     el.addEventListener('input', function () {
       $('roundsValue').textContent = setRounds.value;
-      $('timeValue').textContent = setTime.value;
+      $('timeValue').textContent = muotoileAika(setTime.value);
       updateTurnsNote();
     });
     el.addEventListener('change', function () {
       link.send('settings', { rounds: Number(setRounds.value), drawTime: Number(setTime.value) });
     });
   });
+
+  function muotoileAika(sek) {
+    sek = Number(sek) || 0;
+    if (sek < 60) return sek + ' s';
+    var min = Math.floor(sek / 60), jaa = sek % 60;
+    return jaa ? min + ' min ' + jaa + ' s' : min + ' min';
+  }
 
   function updateTurnsNote() {
     var n = S.state ? S.state.players.length : 0;
@@ -243,9 +319,11 @@
 
     var isHost = st.hostId === S.me;
     setRounds.disabled = setTime.disabled = !isHost;
+    $('setPublic').disabled = !isHost;
+    $('setPublic').closest('.toggle').style.display = isHost ? '' : 'none';
     setRounds.value = st.rounds; setTime.value = st.drawTime;
     $('roundsValue').textContent = st.rounds;
-    $('timeValue').textContent = st.drawTime;
+    $('timeValue').textContent = muotoileAika(st.drawTime);
     updateTurnsNote();
 
     $('btnStart').hidden = !isHost;
@@ -281,6 +359,18 @@
   ];
   var WIDTHS = [4, 9, 18, 34];
 
+  // Kosketusnäytöllä napin 'click' voi jäädä väliin heti piirtovedon jälkeen
+  // (selain odottaa mahdollista kaksoisnapautusta). Reagoidaan siksi jo painallukseen.
+  function onTap(el, fn) {
+    var hoidettu = false;
+    el.addEventListener('pointerdown', function (e) {
+      hoidettu = true;
+      setTimeout(function () { hoidettu = false; }, 500);
+      fn(e);
+    });
+    el.addEventListener('click', function (e) { if (!hoidettu) fn(e); });
+  }
+
   function buildTools() {
     var row = $('toolButtons');
     TOOLS.forEach(function (t) {
@@ -290,7 +380,7 @@
       b.setAttribute('aria-label', t.title);
       b.dataset.tool = t.id;
       b.innerHTML = '<svg viewBox="0 0 24 24">' + t.svg + '</svg>';
-      b.addEventListener('click', function () {
+      onTap(b, function () {
         board.tool = t.id;
         row.querySelectorAll('.tool[data-tool]').forEach(function (x) { x.classList.toggle('on', x === b); });
       });
@@ -302,7 +392,7 @@
     fillBtn.title = 'Täyttö päälle/pois (nelikulmio ja ympyrä)';
     fillBtn.setAttribute('aria-label', 'Täyttö');
     fillBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path class="fill" d="M4 12h16v6H4z"/></svg>';
-    fillBtn.addEventListener('click', function () {
+    onTap(fillBtn, function () {
       board.fill = !board.fill;
       fillBtn.classList.toggle('on', board.fill);
     });
@@ -315,7 +405,7 @@
       b.style.background = c;
       b.title = c;
       b.setAttribute('aria-label', 'Väri ' + c);
-      b.addEventListener('click', function () {
+      onTap(b, function () {
         board.color = c;
         if (board.tool === 'eraser') {
           board.tool = 'pen';
@@ -338,7 +428,7 @@
       var px = Math.max(4, Math.round(w * 0.6));
       dot.style.width = px + 'px'; dot.style.height = px + 'px';
       b.appendChild(dot);
-      b.addEventListener('click', function () {
+      onTap(b, function () {
         board.width = w;
         wrow.querySelectorAll('.width-btn').forEach(function (x) { x.classList.toggle('on', x === b); });
       });

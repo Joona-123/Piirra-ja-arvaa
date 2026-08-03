@@ -83,6 +83,17 @@ Versionumero näkyy aloitussivun alalaidassa ja on tallennettu kahteen paikkaan:
 versiota tiedostoon `version.json` ja tarjoaa vanhentuneelle pelaajalle päivitysnapin,
 joka tyhjentää välimuistin – pelaajan nimi säilyy.
 
+## Julkiset pelit
+
+Pelin luoja voi rastittaa aulassa kohdan "Näytä peli aloitussivun avoimissa peleissä",
+jolloin peli ilmestyy muiden aloitussivulle koodeineen ja tilatietoineen.
+
+Tämäkin toimii ilman palvelinta: julkisia paikkoja on kahdeksan (`pja-open-1` … `pja-open-8`),
+ja julkinen peli varaa niistä ensimmäisen vapaan. Aloitussivu kysyy jokaiselta paikalta
+tiedot ja listaa vastanneet. Tästä seuraa kaksi rajoitusta: **julkisia pelejä voi olla
+kerrallaan enintään kahdeksan**, ja lista tyhjenee itsestään kun pelit päättyvät.
+Paikkojen määrää voi kasvattaa muuttujasta `OPEN_SLOTS` tiedostossa `net.js`.
+
 ## Omat sanat ja säädöt
 
 - **Sanat ja kategoriat:** `words.js` – 15 kategoriaa, ~400 sanaa. Lisää omia vapaasti.
