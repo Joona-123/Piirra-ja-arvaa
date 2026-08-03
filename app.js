@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.4.0';
+  var GAME_VERSION = '1.4.1';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -15,6 +15,7 @@
   function show(id) {
     var menu = document.getElementById('btnMenu');
     if (menu) menu.hidden = (id !== 'screen-game');
+    setTimeout(syncMenuButton, 0);
     if (id === 'screen-game' && typeof board !== 'undefined' && board) {
       setTimeout(function () { board.resize(); }, 0);
     }
@@ -646,6 +647,20 @@
 
   /* ---------------- näkyvän alueen sovitus (puhelimen näppäimistö) ---------------- */
 
+  // Valikkopainike asettuu yläpalkin viereen ja on saman korkuinen kuin palkki.
+  function syncMenuButton() {
+    var btn = $('btnMenu');
+    var hud = document.querySelector('.hud');
+    if (!btn || btn.hidden || !hud) return;
+    var r = hud.getBoundingClientRect();
+    if (!r.height || document.body.classList.contains('drawfull')) {
+      btn.style.top = ''; btn.style.height = '';
+      return;
+    }
+    btn.style.top = Math.round(r.top) + 'px';
+    btn.style.height = Math.round(r.height) + 'px';
+  }
+
   // Piirtoalue mitoitetaan aina 4:3-suhteessa, ei koskaan venytetä yhteen suuntaan.
   function fitSheet() {
     var holder = document.querySelector('.pad-holder');
@@ -658,6 +673,7 @@
     sheet.style.width = Math.floor(leveys) + 'px';
     sheet.style.height = Math.floor(korkeus) + 'px';
     if (board) board.resize();
+    syncMenuButton();
     repositionBubbles();
   }
 

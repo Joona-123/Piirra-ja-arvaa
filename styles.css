@@ -15,6 +15,7 @@
   --rule:       rgba(35,32,29,.14);
   --tape:       rgba(240,228,190,.85);
 
+  --menu-w: 38px;
   --wobble: 255px 12px 225px 15px / 15px 225px 15px 255px;
   --wobble2: 15px 225px 15px 255px / 255px 15px 225px 15px;
   --shadow: 3px 4px 0 rgba(35,32,29,.18);
@@ -210,10 +211,11 @@ input:focus{ outline:none; border-bottom-style:solid; }
   border:2.5px solid var(--ink); border-radius:var(--wobble);
   padding:3px 10px; box-shadow:var(--shadow);
   flex:0 0 auto;
+  margin-left:43px;   /* 5 px reunaan + 38 px valikkopainike */
 }
 .hud-menu{
-  position:fixed; top:9px; left:9px; z-index:40;
-  width:34px; height:34px; padding:0; display:grid; place-items:center;
+  position:fixed; top:5px; left:5px; z-index:40;
+  width:var(--menu-w); height:38px; padding:0; display:grid; place-items:center;
   background:var(--paper-lit); border:2.5px solid var(--ink);
   border-radius:8px 5px 9px 4px; cursor:pointer;
   box-shadow:2px 2px 0 rgba(35,32,29,.2);
@@ -376,6 +378,7 @@ body.drawfull .hud,
 body.drawfull .side,
 body.drawfull .toasts{ display:none !important; }
 body.drawfull .stage .players{ display:flex !important; }
+body.drawfull .hud{ margin-left:0; }
 body.drawfull #screen-game{ padding:0; gap:0; }
 body.drawfull .stage{ gap:0; }
 body.drawfull .pad-holder{ padding:0; }
