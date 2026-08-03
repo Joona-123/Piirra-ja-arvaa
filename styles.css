@@ -397,6 +397,7 @@ body.drawfull.tools-open .tools{ display:flex; }
 
 body.keyboard .stage .players,
 body.drawfull .stage .players{
+  padding-top:46px;   /* tilaa valikkopainikkeelle */
   position:absolute; inset:0; z-index:6;
   display:flex; flex-flow:column wrap; align-content:space-between;
   justify-content:flex-start; gap:3px;
@@ -474,15 +475,31 @@ body.keyboard #screen-game{ gap:5px; padding:5px; }
   overflow-wrap:anywhere;
 }
 .name-bubble::after{
-  content:''; position:absolute; left:14px; bottom:-9px;
+  content:''; position:absolute; left:var(--tail, 14px); bottom:-9px;
+  margin-left:-7px;
   width:0; height:0;
   border:7px solid transparent; border-top-color:var(--ink); border-bottom:0;
 }
 .name-bubble.ok{ background:#d9f2dd; border-color:var(--green); color:#1e5c2c; font-weight:bold; }
 .name-bubble.ok::after{ border-top-color:var(--green); }
 .name-bubble.below{ border-radius:4px 14px 14px 14px; }
-.name-bubble.below::after{ top:-9px; bottom:auto; border:7px solid transparent; border-bottom-color:var(--ink); border-top:0; }
+.name-bubble.below::after{ top:-9px; bottom:auto; left:var(--tail, 14px); margin-left:-7px;
+  border:7px solid transparent; border-bottom-color:var(--ink); border-top:0; }
 .name-bubble.below.ok::after{ border-bottom-color:var(--green); }
+
+/* pelaajat reunoilla -> nuoli osoittaa sivulle */
+.name-bubble.side-left{ border-radius:4px 14px 14px 14px; }
+.name-bubble.side-left::after{
+  left:-9px; bottom:auto; top:var(--tail-y, 50%); margin-left:0; margin-top:-7px;
+  border:7px solid transparent; border-right-color:var(--ink); border-left:0;
+}
+.name-bubble.side-left.ok::after{ border-right-color:var(--green); }
+.name-bubble.side-right{ border-radius:14px 4px 14px 14px; }
+.name-bubble.side-right::after{
+  left:auto; right:-9px; bottom:auto; top:var(--tail-y, 50%); margin-left:0; margin-top:-7px;
+  border:7px solid transparent; border-left-color:var(--ink); border-right:0;
+}
+.name-bubble.side-right.ok::after{ border-left-color:var(--green); }
 
 @keyframes bubbleIn{ from{ transform:scale(.7) translateY(6px); opacity:0; } to{ transform:none; opacity:1; } }
 @keyframes bubbleOut{ to{ opacity:0; transform:translateY(-10px); } }

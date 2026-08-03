@@ -126,8 +126,64 @@
   Board.prototype.paint = function (ctx, op) {
     if (!op) return;
     if (op.k === 'p') stroke(ctx, op);
+    else if (op.k === 'f') this.floodFill(ctx, op);
     else shape(ctx, op);
   };
+
+  /* Väritys: täyttää yhtenäisen alueen kynänjälkien rajaamaan asti. */
+  Board.prototype.floodFill = function (ctx, op) {
+    var cv = ctx.canvas;
+    var W = cv.width, H = cv.height;
+    if (!W || !H) return;
+    var sx = Math.round(op.a[0] * W), sy = Math.round(op.a[1] * H);
+    if (sx < 0 || sy < 0 || sx >= W || sy >= H) return;
+
+    var img;
+    try { img = ctx.getImageData(0, 0, W, H); } catch (e) { return; }
+    var d = img.data;
+    var alku = (sy * W + sx) * 4;
+    var r0 = d[alku], g0 = d[alku + 1], b0 = d[alku + 2], a0 = d[alku + 3];
+
+    var väri = hexToRgb(op.c);
+    if (!väri) return;
+    if (Math.abs(r0 - väri[0]) < 8 && Math.abs(g0 - väri[1]) < 8 &&
+        Math.abs(b0 - väri[2]) < 8 && Math.abs(a0 - 255) < 8) return;   // jo samaa väriä
+
+    var raja = 48 * 48 * 3;
+    var pino = [alku];
+    var käyty = new Uint8Array(W * H);
+    käyty[sy * W + sx] = 1;
+
+    while (pino.length) {
+      var i = pino.pop();
+      d[i] = väri[0]; d[i + 1] = väri[1]; d[i + 2] = väri[2]; d[i + 3] = 255;
+      var px = (i / 4) % W, py = Math.floor((i / 4) / W);
+      tarkista(px - 1, py); tarkista(px + 1, py);
+      tarkista(px, py - 1); tarkista(px, py + 1);
+    }
+
+    function tarkista(x, y) {
+      if (x < 0 || y < 0 || x >= W || y >= H) return;
+      var idx = y * W + x;
+      if (käyty[idx]) return;
+      var j = idx * 4;
+      var dr = d[j] - r0, dg = d[j + 1] - g0, db = d[j + 2] - b0, da = d[j + 3] - a0;
+      if (dr * dr + dg * dg + db * db + da * da > raja) return;
+      käyty[idx] = 1;
+      pino.push(j);
+    }
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.putImageData(img, 0, 0);
+    ctx.restore();
+  };
+
+  function hexToRgb(hex) {
+    if (!hex || hex === ERASE) return null;
+    var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null;
+  }
 
   Board.prototype.render = function () {
     if (!this.sx) return;
@@ -208,6 +264,14 @@
       var p = self._pos(e);
       var col = self.tool === 'eraser' ? ERASE : self.color;
       var wid = self.tool === 'eraser' ? self.width * 2.2 : self.width;
+
+      if (self.tool === 'fill') {
+        var täyttö = { k: 'f', c: self.color, a: [r3(p[0]), r3(p[1])] };
+        self.active = null;
+        self.addOp(täyttö);
+        self.onOp(täyttö);
+        return;
+      }
 
       if (self.tool === 'pen' || self.tool === 'eraser') {
         self.active = { k: 'p', c: col, w: wid, pts: [[r3(p[0]), r3(p[1])]] };

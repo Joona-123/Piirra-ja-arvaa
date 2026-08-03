@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.5.0';
+  var GAME_VERSION = '1.6.0';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -268,6 +268,7 @@
     { id: 'line', title: 'Viiva', svg: '<path d="M5 19L19 5"/>' },
     { id: 'rect', title: 'Nelikulmio', svg: '<path d="M4 6h16v12H4z"/>' },
     { id: 'circle', title: 'Ympyrä', svg: '<circle cx="12" cy="12" r="8"/>' },
+    { id: 'fill', title: 'Väritä alue', svg: '<path d="M6 12L12 6l7 7-6 6a2 2 0 0 1-3 0l-4-4a2 2 0 0 1 0-3z"/><path d="M10 4l2 2"/><path class="fill" d="M20 20c1.2 0 2-.8 2-1.8 0-1-2-3.2-2-3.2s-2 2.2-2 3.2c0 1 .8 1.8 2 1.8z"/>' },
     { id: 'eraser', title: 'Pyyhekumi', svg: '<path d="M8 19h11"/><path d="M15 5l5 5-8 8H8l-3-3z"/>' }
   ];
   var COLORS = ['#23201d', '#7a7168', '#ffffff', '#e04b3c', '#f08a2c', '#f2b830',
@@ -437,15 +438,39 @@
     var card = null, cards = $('players').children;
     for (var i = 0; i < cards.length; i++) if (cards[i].dataset.id === id) card = cards[i];
     if (!card) { if (b.parentNode) b.parentNode.removeChild(b); return; }
+
     var r = card.getBoundingClientRect();
     var s = b.getBoundingClientRect();
     var w = s.width || 120, h = s.height || 28;
-    var left = Math.max(6, Math.min((window.innerWidth || 360) - w - 6, r.left + r.width / 2 - w / 2));
+    var lev = window.innerWidth || 360, kor = window.innerHeight || 640;
+    var reuna = 6;
+    b.classList.remove('below', 'side-left', 'side-right');
+
+    var reunoilla = document.body.classList.contains('drawfull') ||
+                    document.body.classList.contains('keyboard');
+
+    if (reunoilla) {
+      // pelaajat ovat piirtoalueen sivuilla -> kupla tulee sivultapäin
+      var vasemmalla = (r.left + r.width / 2) < lev / 2;
+      var x = vasemmalla ? r.right + 10 : r.left - w - 10;
+      var y = r.top + r.height / 2 - h / 2;
+      b.classList.add(vasemmalla ? 'side-left' : 'side-right');
+      b.style.left = Math.round(Math.max(reuna, Math.min(lev - w - reuna, x))) + 'px';
+      b.style.top = Math.round(Math.max(reuna, Math.min(kor - h - reuna, y))) + 'px';
+      // nuoli pelaajan korkeudelle
+      var pysty = r.top + r.height / 2 - parseFloat(b.style.top);
+      b.style.setProperty('--tail-y', Math.round(Math.max(10, Math.min(h - 10, pysty))) + 'px');
+      return;
+    }
+
+    var left = Math.max(reuna, Math.min(lev - w - reuna, r.left + r.width / 2 - w / 2));
     var top = r.top - h - 10;
-    b.classList.remove('below');
     if (top < 4) { top = r.bottom + 8; b.classList.add('below'); }
     b.style.left = Math.round(left) + 'px';
     b.style.top = Math.round(top) + 'px';
+    // nuoli osoittaa pelaajan keskikohtaan myös kun kupla on siirtynyt reunan takia
+    var osoitin = r.left + r.width / 2 - left;
+    b.style.setProperty('--tail', Math.round(Math.max(12, Math.min(w - 12, osoitin))) + 'px');
   }
 
   /* poistaa kaikki kuplat kerralla (esim. kun vuoro päättyy) */
@@ -502,8 +527,9 @@
     S.phase = st.phase;
     S.isDrawer = st.drawerId === S.me;
 
-    if (st.phase === 'countdown') {
+    if (st.phase === 'countdown' || (st.phase === 'gameend' && S.aulassa)) {
       renderLobby(st);
+      if (!$('screen-lobby').classList.contains('active')) show('screen-lobby');
       return;
     }
 
@@ -554,6 +580,7 @@
   link.on('state', onState);
 
   link.on('countdown', function (d) {
+    S.aulassa = false;
     S.total = d.seconds || 5;
     openModal('<h2>Peli alkaa!</h2><div class="countdown" id="countNum">' + S.total + '</div>' +
       '<p class="hint">Valmistautukaa…</p>', 'countdown');
@@ -563,8 +590,7 @@
 
   link.on('tick', function (d) {
     setTimer(d.secondsLeft, S.total);
-    var bar = document.querySelector('.choose-bar i');
-    if (bar) bar.style.width = Math.round((d.secondsLeft / 10) * 100) + '%';
+
     var num = $('countNum');
     if (num) num.textContent = d.secondsLeft > 0 ? d.secondsLeft : 'Nyt!';
   });
@@ -576,6 +602,16 @@
     });
     html += '</div><div class="choose-bar"><i></i></div><p class="hint">Jos et valitse, sana arvotaan.</p>';
     openModal(html, 'choices');
+    var bar = modalCard.querySelector('.choose-bar i');
+    if (bar) {
+      var kesto = d.seconds || 10;
+      bar.style.transition = 'none';
+      bar.style.width = '100%';
+      requestAnimationFrame(function () {
+        bar.style.transition = 'width ' + kesto + 's linear';
+        bar.style.width = '0%';
+      });
+    }
     modalCard.querySelectorAll('button[data-i]').forEach(function (b) {
       b.addEventListener('click', function () {
         link.send('choose', { index: Number(b.dataset.i) });
@@ -628,12 +664,15 @@
       html += '<li><b>' + escapeHtml(p.name) + '</b><span>' + p.score + ' p</span></li>';
     });
     html += '</ul>';
-    html += isHost
-      ? '<button class="btn btn-primary" id="btnAgain">Takaisin aulaan</button>'
-      : '<p class="hint">Pelinjohtaja voi aloittaa uuden pelin.</p>';
+    html += '<button class="btn btn-primary" id="btnAgain">Takaisin aulaan</button>';
+    if (!isHost) html += '<p class="hint">Pelinjohtaja voi aloittaa uuden pelin – pääset mukaan automaattisesti.</p>';
     openModal(html, 'gameend');
-    var again = $('btnAgain');
-    if (again) again.addEventListener('click', function () { link.send('backToLobby'); closeModal(); });
+    $('btnAgain').addEventListener('click', function () {
+      S.aulassa = true;              // vain oma näkymä, ei muille
+      closeModal();
+      show('screen-lobby');
+      if (S.state) renderLobby(S.state);
+    });
   });
 
   /* pelinjohtajan yhteys katkesi -> peli loppuu muilta */
