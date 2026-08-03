@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.13.1';
+  var GAME_VERSION = '1.13.2';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -390,7 +390,7 @@
     var mins = Math.round((turns * (Number(setTime.value) + 16)) / 60);
     $('turnsNote').textContent = n >= 2
       ? 'Jokainen piirtää ' + setRounds.value + ' kertaa · yhteensä ' + turns + ' vuoroa · noin ' + mins + ' min.'
-      : 'Tarvitaan vähintään 2 pelaajaa.';
+      : '';
   }
 
   $('btnStart').addEventListener('click', function () { link.send('start'); });
@@ -613,9 +613,14 @@
   }
 
   /* Aulan viestilista: näkyy vain aulassa, mutta kerää myös pelin ilmoitukset. */
+  var PELIVAIHE = { choose: 1, draw: 1, turnend: 1 };
+
   function lisaaAulaViesti(o) {
     var laatikko = $('lobbyChat');
     if (!laatikko) return;
+    // aulan viestilistaan vain aulan juttelu ja ilmoitukset – ei arvauksia
+    if (o.kind === 'correct' || o.kind === 'team') return;
+    if (o.kind === 'guess' && PELIVAIHE[S.phase]) return;
     var rivi = document.createElement('div');
     if (o.kind === 'system') {
       rivi.className = 'rivi system';
