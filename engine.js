@@ -299,6 +299,18 @@
     return jarjestys;
   };
 
+  /* Montako piirtovuoroa on vielä jäljellä nykyisen vuoron jälkeen.
+     Laskee vain paikalla olevat pelaajat, joten poistuminen lyhentää arviota heti. */
+  Engine.prototype.turnsLeft = function () {
+    if (this.phase === 'lobby' || this.phase === 'countdown' || this.phase === 'gameend') return 0;
+    var loput = 0;
+    for (var i = this.turnIndex + 1; i < this.order.length; i++) {
+      if (this.players.has(this.order[i])) loput++;
+    }
+    var kierroksia = Math.max(0, this.settings.rounds - this.round);
+    return loput + kierroksia * this.players.size;
+  };
+
   Engine.prototype.nextTurn = function () {
     this.stopTimers();
     this.turnIndex++;

@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.10.1';
+  var GAME_VERSION = '1.12.0';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -133,11 +133,14 @@
 
   function arvioKesto(p) {
     if (!p || !p.drawTime) return null;
-    var pelaajia = p.order || p.players || 2;
-    var vuoroja = (p.rounds || 3) * pelaajia;
-    var tehty = ((p.round || 1) - 1) * pelaajia + (p.turnIndex || 0);
-    var jaljella = Math.max(0, vuoroja - tehty - 1);
     var vuoronKesto = p.drawTime + 16;                 // sanavalinta + tulosruutu
+    var jaljella;
+    if (p.turnsLeft != null) {
+      jaljella = p.turnsLeft;                          // isäntä laskee vain paikalla olevat
+    } else {
+      var pelaajia = p.order || p.players || 2;
+      jaljella = Math.max(0, (p.rounds || 3) * pelaajia - (((p.round || 1) - 1) * pelaajia + (p.turnIndex || 0)) - 1);
+    }
     return Math.max(0, (p.turnLeft || 0) + jaljella * vuoronKesto);
   }
 
@@ -297,6 +300,7 @@
             tiedot.turnIndex = e.turnIndex;
             tiedot.order = e.order.length || e.players.size;
             tiedot.turnLeft = e.endsAt ? Math.max(0, Math.round((e.endsAt - Date.now()) / 1000)) : 0;
+            tiedot.turnsLeft = e.turnsLeft();
           }
           return tiedot;
         });
@@ -590,9 +594,35 @@
   var toasts = $('toasts');
 
   function addBubble(o) {
+    lisaaAulaViesti(o);
     if (o.kind === 'system') return addToast(o.text, o.tone);
     addFloat(o);
   }
+
+  /* Aulan viestilista: näkyy vain aulassa, mutta kerää myös pelin ilmoitukset. */
+  function lisaaAulaViesti(o) {
+    var laatikko = $('lobbyChat');
+    if (!laatikko) return;
+    var rivi = document.createElement('div');
+    if (o.kind === 'system') {
+      rivi.className = 'rivi system';
+      rivi.textContent = o.text;
+    } else {
+      rivi.className = 'rivi' + (o.playerId === S.me ? ' mine' : '');
+      rivi.innerHTML = '<b>' + escapeHtml(o.name || '') + ':</b> ' + escapeHtml(o.text);
+    }
+    laatikko.appendChild(rivi);
+    while (laatikko.children.length > 40) laatikko.removeChild(laatikko.firstChild);
+    laatikko.scrollTop = laatikko.scrollHeight;
+  }
+
+  $('lobbyChatForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = $('lobbyChatInput').value.trim();
+    if (!v) return;
+    link.send('guess', { text: v });
+    $('lobbyChatInput').value = '';
+  });
 
   /* lyhyt ilmoitus ruudun alalaidassa (liittymiset, vihjeet yms.) */
   function addToast(text, tone) {
@@ -704,7 +734,9 @@
     S.phase = st.phase;
     S.isDrawer = st.drawerId === S.me;
 
-    if (st.phase === 'countdown' || (st.phase === 'gameend' && S.aulassa)) {
+    var peliRuudussa = $('screen-game').classList.contains('active');
+    if (st.phase === 'countdown' ||
+        (st.phase === 'gameend' && (S.aulassa || !peliRuudussa))) {
       renderLobby(st);
       if (!$('screen-lobby').classList.contains('active')) show('screen-lobby');
       return;
@@ -853,12 +885,75 @@
   });
 
   /* pelinjohtajan yhteys katkesi -> peli loppuu muilta */
+  /* Pelinjohtaja poistui: peli ei pääty, vaan joku muu ottaa saman koodin
+     haltuunsa ja kaikki palaavat aulaan. Vuoro määräytyy pelaajajärjestyksestä,
+     joten vain yksi yrittää kerrallaan – muut liittyvät hänen peliinsä. */
+  var palautusKesken = false;
+
   link.on('hostgone', function () {
+    if (palautusKesken) return;
+    palautusKesken = true;
     board.setEnabled(false);
-    openModal('<h2>Peli päättyi</h2><p>Yhteys pelinjohtajaan katkesi. Peli pyörii hänen laitteellaan, joten se päättyy kun välilehti suljetaan.</p>' +
-      '<button class="btn btn-primary" id="btnHome">Takaisin alkuun</button>');
-    var b = $('btnHome');
-    if (b) b.addEventListener('click', function () { location.href = location.pathname; });
+    S.aulassa = false;
+
+    var koodi = S.code;
+    var muut = ((S.state && S.state.players) || [])
+      .filter(function (p) { return p.id !== (S.state && S.state.hostId); })
+      .map(function (p) { return p.id; })
+      .sort();
+    var oma = Math.max(0, muut.indexOf(S.me));
+
+    openModal('<h2>Pelinjohtaja poistui</h2>' +
+      '<p class="hint">Peliä jatketaan samalla koodilla. Siirrytään aulaan…</p>' +
+      '<div class="countdown">' + escapeHtml(koodi) + '</div>', 'hostgone');
+
+    var valmis = false;
+    function onnistui() {
+      if (valmis) return;
+      valmis = true;
+      palautusKesken = false;
+      closeModal();
+      show('screen-lobby');
+      buildLobby(S.code);
+      if (S.state) onState(S.state);
+    }
+
+    // 1) oma vuoro yrittää ottaa koodin haltuun
+    setTimeout(function () {
+      if (valmis) return;
+      link.claimHost(koodi, myName(), function (virhe, code) {
+        if (valmis) return;
+        if (!virhe) {
+          S.me = link.me;
+          S.code = code || koodi;
+          addToast('Sinusta tuli pelinjohtaja', 'good');
+          onnistui();
+        }
+      });
+    }, 1200 + oma * 2500);
+
+    // 2) samalla yritetään liittyä siihen, joka ehti ensin
+    var yrityksiä = 0;
+    var ajastin = setInterval(function () {
+      if (valmis || link.isHost) return clearInterval(ajastin);
+      if (++yrityksiä > 14) {                       // ~30 s, sitten luovutetaan
+        clearInterval(ajastin);
+        if (valmis) return;
+        palautusKesken = false;
+        openModal('<h2>Peli päättyi</h2><p>Yhteyttä ei saatu palautettua.</p>' +
+          '<button class="btn btn-primary" id="btnHome">Takaisin alkuun</button>');
+        var b = $('btnHome');
+        if (b) b.addEventListener('click', function () { location.href = location.pathname; });
+        return;
+      }
+      link.joinGame(koodi, myName(), function (virhe, code) {
+        if (valmis || virhe) return;
+        clearInterval(ajastin);
+        S.me = link.me;
+        S.code = code || koodi;
+        onnistui();
+      });
+    }, 2000);
   });
 
   /* ---------------- näkyvän alueen sovitus (puhelimen näppäimistö) ---------------- */

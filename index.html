@@ -107,6 +107,15 @@
       <p id="hostNote" class="hint host-note" hidden>Peli pyörii tässä välilehdessä – pidä se auki ja näyttö hereillä koko pelin ajan.</p>
       <button id="btnLeave" class="btn btn-small btn-quiet">Poistu</button>
     </div>
+
+    <div class="card lobby-chat-card">
+      <h2>Viestit</h2>
+      <div id="lobbyChat" class="lobby-chat" aria-live="polite"></div>
+      <form id="lobbyChatForm" class="chat-form" autocomplete="off">
+        <input id="lobbyChatInput" type="text" maxlength="60" placeholder="Kirjoita viesti…" aria-label="Viesti">
+        <button class="btn btn-small" type="submit">Lähetä</button>
+      </form>
+    </div>
   </div>
 </section>
 

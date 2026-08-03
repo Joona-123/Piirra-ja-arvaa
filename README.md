@@ -39,7 +39,7 @@ laitteelta laitteelle.
 
 **Mitä tästä seuraa:**
 
-- 🔸 **Pelin luojan välilehti pitää olla auki koko pelin ajan.** Jos hän sulkee sen, peli päättyy muilta. Peli varoittaa sulkemisesta ja näyttää muille selkeän ilmoituksen.
+- 🔸 **Pelin luojan välilehti pitää olla auki kesken pelin.** Jos hän sulkee sen, kesken oleva peli keskeytyy – mutta peli ei kaadu: joku muista ottaa saman pelikoodin haltuunsa muutamassa sekunnissa, kaikki siirtyvät aulaan ja uusi pelinjohtaja voi aloittaa uuden pelin. Pisteet nollautuvat, koska peli pyöri edellisen johtajan laitteella.
 - 🔸 Puhelimessa kannattaa pitää näyttö hereillä pelin luojan laitteella – taustalle mennyt välilehti pysäyttää ajastimet.
 - 🔸 Samassa wifissä yhteys toimii käytännössä aina. Eri verkoista (esim. osa 4G:llä) yhteys onnistuu useimmiten STUN-palvelimien avulla, mutta tiukka mobiili- tai yritysverkko voi estää suoran yhteyden. Silloin tarvitaan TURN-palvelin: kohta `PEER_CONFIG` tiedostossa `net.js` kertoo, mihin sen tiedot laitetaan.
 

@@ -216,6 +216,17 @@ input:focus{ outline:none; border-bottom-style:solid; }
   .lobby-join{ grid-row:span 2; }
 }
 
+.lobby-chat{
+  height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;
+  margin-bottom:8px; padding:2px;
+}
+.lobby-chat .rivi{ font-size:.95rem; }
+.lobby-chat .rivi b{ color:var(--blue); font-weight:normal; }
+.lobby-chat .rivi.system{ color:var(--ink-soft); font-size:.88rem; text-align:center; }
+.lobby-chat .rivi.mine b{ color:var(--red); }
+
+@media (min-width:800px){ .lobby-chat-card{ grid-column:2; } }
+
 /* ================= PELI ================= */
 
 #screen-game{

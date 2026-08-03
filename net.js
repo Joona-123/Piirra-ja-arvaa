@@ -319,6 +319,44 @@ var CONNECT_TIMEOUT = 15000;
     return 'Yhteysvirhe: ' + (err && (err.message || err.type) || 'tuntematon');
   }
 
+  /* Isännän poistuessa joku muista ottaa saman koodin haltuunsa ja pelaajat
+     palaavat aulaan. Yritetään useasti, koska vanhan tunnuksen vapautuminen
+     välityspalvelimella voi kestää hetken. */
+  Link.prototype.claimHost = function (code, name, cb) {
+    var self = this;
+    var yrityksiä = 0;
+
+    function yritä() {
+      yrityksiä++;
+      var peer;
+      try { peer = new root.Peer(ID_PREFIX + code, PEER_CONFIG); } catch (e) { return cb('Ei onnistunut'); }
+      var ratkaistu = false;
+
+      peer.on('open', function () {
+        if (ratkaistu) return;
+        ratkaistu = true;
+        self.peer = peer;
+        self.code = code;
+        self.isHost = true;
+        self.me = 'host';
+        self.conns = new Map();
+        self.startEngine(name);
+        self.bindHost();
+        cb(null, code);
+      });
+
+      peer.on('error', function (err) {
+        if (ratkaistu) return;
+        ratkaistu = true;
+        try { peer.destroy(); } catch (e) {}
+        if (err && err.type === 'unavailable-id') return cb('varattu');   // joku muu ehti ensin
+        if (yrityksiä < 4) return setTimeout(yritä, 1200);
+        cb('Ei onnistunut');
+      });
+    }
+    yritä();
+  };
+
   /* Isäntä: julkaisee pelin ilmoitustaululle. getInfo palauttaa tuoreet tiedot. */
   Link.prototype.publishPublic = function (getInfo) {
     var self = this;
