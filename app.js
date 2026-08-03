@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.3.0';
+  var GAME_VERSION = '1.4.0';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -13,6 +13,8 @@
   /* ---------------- ruudut ---------------- */
 
   function show(id) {
+    var menu = document.getElementById('btnMenu');
+    if (menu) menu.hidden = (id !== 'screen-game');
     if (id === 'screen-game' && typeof board !== 'undefined' && board) {
       setTimeout(function () { board.resize(); }, 0);
     }
@@ -28,6 +30,35 @@
     modal.hidden = false;
   }
   function closeModal() { modal.hidden = true; modalCard.innerHTML = ''; S.modalKind = null; }
+
+  // Nimilaatikko venyy oikealle vain jos nimi ei mahdu, eikä koskaan ruudun ulkopuolelle.
+  function laajennaNimi(li) {
+    var b = li.querySelector('b');
+    if (!b || li.classList.contains('expanded')) return;
+    var yli = b.scrollWidth - b.clientWidth;
+    if (yli <= 1) return;                       // nimi näkyy jo kokonaan
+
+    var r = li.getBoundingClientRect();
+    var reuna = 8;
+    var tilaa = (window.innerWidth || 360) - r.left - reuna;
+    var haluttu = Math.ceil(r.width + yli + 2);
+    var leveys = Math.max(r.width, Math.min(haluttu, tilaa));
+
+    li.style.width = Math.round(r.width) + 'px';   // lähtökohta animaatiolle
+    li.classList.add('expanded');
+    requestAnimationFrame(function () { li.style.width = Math.round(leveys) + 'px'; });
+
+    clearTimeout(li._laajennus);
+    li._laajennus = setTimeout(function () {
+      li.style.width = Math.round(r.width) + 'px';
+      setTimeout(function () {
+        li.classList.remove('expanded');
+        li.style.width = '';
+        repositionBubbles();
+      }, 240);
+    }, 2500);
+    setTimeout(repositionBubbles, 240);
+  }
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -112,10 +143,13 @@
 
   $('btnMenu').addEventListener('click', function () {
     openModal('<h2>Valikko</h2>' +
-      '<p class="hint">Peli jatkuu ilman sinua, jos poistut.</p>' +
+      '<p class="hint">' + (link.isHost
+        ? 'Sinä pyörität peliä, joten poistumisesi päättää pelin kaikilta.'
+        : 'Peli jatkuu ilman sinua, jos poistut.') + '</p>' +
       '<div class="menu-actions">' +
       '<button class="btn" id="btnClose">Takaisin peliin</button>' +
-      '<button class="btn btn-danger" id="btnQuit">Poistu pelistä</button>' +
+      '<button class="btn btn-danger" id="btnQuit">' +
+      (link.isHost ? 'Päätä peli ja poistu' : 'Poistu pelistä') + '</button>' +
       '</div>', 'menu');
     $('btnClose').addEventListener('click', closeModal);
     $('btnQuit').addEventListener('click', function () {
@@ -366,16 +400,7 @@
       li.className = (p.isDrawer ? 'drawer ' : '') + (p.guessed ? 'guessed ' : '') + (p.id === S.me ? 'me' : '');
       li.innerHTML = '<b>' + (p.isDrawer ? '✏️ ' : '') + escapeHtml(p.name) + '</b>' +
         '<span class="pts">' + p.score + ' p' + (p.guessed ? ' ✓' : '') + '</span>';
-      li.addEventListener('click', function () {
-        var auki = this;
-        auki.classList.add('expanded');
-        clearTimeout(auki._laajennus);
-        auki._laajennus = setTimeout(function () {
-          auki.classList.remove('expanded');
-          repositionBubbles();
-        }, 2500);
-        repositionBubbles();
-      });
+      li.addEventListener('click', function () { laajennaNimi(this); });
       ul.appendChild(li);
     });
     repositionBubbles();
