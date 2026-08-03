@@ -96,7 +96,8 @@
 
     // Kesken pelin sisään pääsee vain se, joka oli mukana kun peli alkoi
     // (esim. yhteys katkesi) – tunnistus tapahtuu nimen perusteella.
-    if (this.phase !== 'lobby' && !back) {
+    // Päättyneeseen peliin saa liittyä: se odottaa aulassa uutta aloitusta.
+    if (this.phase !== 'lobby' && this.phase !== 'gameend' && !back) {
       return {
         ok: false,
         error: 'Peli on jo käynnissä. Kesken pelin mukaan pääsee vain, jos oli mukana alusta asti – ' +

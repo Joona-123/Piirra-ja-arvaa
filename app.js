@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.10.0';
+  var GAME_VERSION = '1.10.1';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -129,6 +129,8 @@
   var avoimet = [], vahti = null, arvioAjastin = null;
 
   // Arvio pelin jäljellä olevasta kestosta sekunteina.
+  var KESKEN = { choose: 1, draw: 1, turnend: 1 };
+
   function arvioKesto(p) {
     if (!p || !p.drawTime) return null;
     var pelaajia = p.order || p.players || 2;
@@ -164,7 +166,7 @@
     for (var i = 0; i < ul.children.length; i++) vanhat[ul.children[i].dataset.code] = ul.children[i];
 
     pelit.forEach(function (p) {
-      var kaynnissa = p.phase && p.phase !== 'lobby' && p.phase !== 'countdown';
+      var kaynnissa = !!KESKEN[p.phase];
       var taynna = p.players >= 12;
       p._arvio = kaynnissa ? arvioKesto(p) : null;
       p._haettu = Date.now();
@@ -191,8 +193,11 @@
       li.querySelector('.nimi').textContent = p.host || 'Peli';
       var tila = li.querySelector('.tila');
       tila.className = 'tila ' + (kaynnissa ? 'kaynnissa' : 'aulassa');
-      tila.innerHTML =
-        (kaynnissa ? 'Käynnissä · kierros ' + p.round + '/' + p.rounds : 'Aulassa, odottaa aloitusta') +
+      var tilateksti = kaynnissa ? 'Käynnissä · kierros ' + p.round + '/' + p.rounds
+        : p.phase === 'countdown' ? 'Alkamassa!'
+        : p.phase === 'gameend' ? 'Peli päättyi, odottaa uutta'
+        : 'Aulassa, odottaa aloitusta';
+      tila.innerHTML = tilateksti +
         ' · ' + p.players + '/12 pelaajaa' + (kaynnissa ? ' · <span class="arvio"></span>' : '');
 
       var b = li.querySelector('button');

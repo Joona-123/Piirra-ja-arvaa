@@ -1,5 +1,5 @@
 /* Service worker: pitää pelin toimintakykyisenä ja hallitsee välimuistin version. */
-var VERSION = '1.10.0';
+var VERSION = '1.10.1';
 var CACHE = 'pja-' + VERSION;
 var FILES = [
   './', './index.html', './styles.css', './app.js', './engine.js', './net.js',
