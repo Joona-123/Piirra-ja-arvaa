@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.13.0';
+  var GAME_VERSION = '1.13.1';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -278,8 +278,12 @@
   });
 
   var julkinenPaalla = false;
+
   function paivitaJulkisuus() {
     if (!link.isHost) return;
+    if (S.state && S.state.isPublic !== $('setPublic').checked) {
+      link.send('settings', { isPublic: $('setPublic').checked });
+    }
     if ($('setPublic').checked) {
       if (!julkinenPaalla) {
         julkinenPaalla = true;
@@ -410,6 +414,8 @@
     setRounds.disabled = setTime.disabled = !isHost;
     $('setPublic').disabled = !isHost;
     $('setPublic').closest('.toggle').style.display = isHost ? '' : 'none';
+    if (document.activeElement !== $('setPublic')) $('setPublic').checked = !!st.isPublic;
+    if (isHost && !!st.isPublic !== julkinenPaalla) paivitaJulkisuus();
     setRounds.value = st.rounds; setTime.value = st.drawTime;
     $('roundsValue').textContent = st.rounds;
     $('timeValue').textContent = muotoileAika(st.drawTime);
@@ -935,7 +941,9 @@
     // 1) oma vuoro yrittää ottaa koodin haltuun
     setTimeout(function () {
       if (valmis) return;
-      var vanhatAsetukset = S.state ? { rounds: S.state.rounds, drawTime: S.state.drawTime } : null;
+      var vanhatAsetukset = S.state
+        ? { rounds: S.state.rounds, drawTime: S.state.drawTime, isPublic: S.state.isPublic }
+        : null;
       link.claimHost(koodi, myName(), vanhatAsetukset, function (virhe, code) {
         if (valmis) return;
         if (!virhe) {

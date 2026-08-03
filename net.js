@@ -346,6 +346,7 @@ var CONNECT_TIMEOUT = 15000;
         if (settings) {
           if (settings.rounds) self.engine.settings.rounds = settings.rounds;
           if (settings.drawTime) self.engine.settings.drawTime = settings.drawTime;
+          if (typeof settings.isPublic === 'boolean') self.engine.settings.isPublic = settings.isPublic;
           self.engine.broadcast();
         }
         self.bindHost();

@@ -57,7 +57,7 @@
 
     this.players = new Map();
     this.retired = new Map();       // nimi -> { score, id } paluuta varten
-    this.settings = { rounds: 3, drawTime: 80 };
+    this.settings = { rounds: 3, drawTime: 80, isPublic: false };
     this.phase = 'lobby';
     this.round = 0;
     this.order = [];
@@ -184,6 +184,7 @@
       round: this.round,
       rounds: this.settings.rounds,
       drawTime: this.settings.drawTime,
+      isPublic: !!this.settings.isPublic,
       drawerId: this.drawerId,
       drawerName: drawer ? drawer.name : null,
       category: this.phase === 'draw' ? this.category : null,
@@ -465,6 +466,7 @@
         if (!isHost || (this.phase !== 'lobby' && this.phase !== 'gameend')) return;
         if (isFinite(data.rounds)) this.settings.rounds = Math.max(1, Math.min(10, Math.round(data.rounds)));
         if (isFinite(data.drawTime)) this.settings.drawTime = Math.max(20, Math.min(300, Math.round(data.drawTime)));
+        if (typeof data.isPublic === 'boolean') this.settings.isPublic = data.isPublic;
         return this.broadcast();
 
       case 'start':
