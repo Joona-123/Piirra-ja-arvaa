@@ -69,6 +69,9 @@
 
 <!-- ============ AULA ============ -->
 <section id="screen-lobby" class="screen">
+  <button id="btnLeave" class="lobby-leave" title="Poistu aulasta" aria-label="Poistu aulasta">
+    <svg viewBox="0 0 24 24"><path d="M14 5H6v14h8"/><path d="M11 12h9M17 8l4 4-4 4"/></svg>
+  </button>
   <div class="lobby-wrap">
     <div class="card lobby-join">
       <h2>Liity peliin</h2>
@@ -105,7 +108,7 @@
       <button id="btnStart" class="btn btn-primary">Aloita peli</button>
       <p id="lobbyHint" class="hint">Odota, että pelinjohtaja aloittaa.</p>
       <p id="hostNote" class="hint host-note" hidden>Peli pyörii tässä välilehdessä – pidä se auki ja näyttö hereillä koko pelin ajan.</p>
-      <button id="btnLeave" class="btn btn-small btn-quiet">Poistu</button>
+
     </div>
 
     <div class="card lobby-chat-card">

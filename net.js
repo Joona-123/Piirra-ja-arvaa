@@ -225,6 +225,8 @@ var CONNECT_TIMEOUT = 15000;
     var self = this;
     code = String(code || '').toUpperCase().trim();
     if (!peerAvailable()) return cb(MISSING_LIB);
+    // Oman pelin isäntä ei saa liittyä omaan peliinsä – siitä syntyisi haamupelaaja.
+    if (this.isHost) return cb('Olet jo pelinjohtaja');
     var peer;
     try {
       peer = new root.Peer(PEER_CONFIG);
@@ -322,7 +324,7 @@ var CONNECT_TIMEOUT = 15000;
   /* Isännän poistuessa joku muista ottaa saman koodin haltuunsa ja pelaajat
      palaavat aulaan. Yritetään useasti, koska vanhan tunnuksen vapautuminen
      välityspalvelimella voi kestää hetken. */
-  Link.prototype.claimHost = function (code, name, cb) {
+  Link.prototype.claimHost = function (code, name, settings, cb) {
     var self = this;
     var yrityksiä = 0;
 
@@ -341,6 +343,11 @@ var CONNECT_TIMEOUT = 15000;
         self.me = 'host';
         self.conns = new Map();
         self.startEngine(name);
+        if (settings) {
+          if (settings.rounds) self.engine.settings.rounds = settings.rounds;
+          if (settings.drawTime) self.engine.settings.drawTime = settings.drawTime;
+          self.engine.broadcast();
+        }
         self.bindHost();
         cb(null, code);
       });

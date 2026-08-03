@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.12.0';
+  var GAME_VERSION = '1.13.0';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -27,11 +27,15 @@
 
   var modal = $('modal'), modalCard = $('modalCard');
   function openModal(html, kind) {
+    if (S.modalKind === 'update' && kind !== 'update') return;   // päivitystä ei voi ohittaa
     S.modalKind = kind || null;
     modalCard.innerHTML = html;
     modal.hidden = false;
   }
-  function closeModal() { modal.hidden = true; modalCard.innerHTML = ''; S.modalKind = null; }
+  function closeModal() {
+    if (S.modalKind === 'update') return;
+    modal.hidden = true; modalCard.innerHTML = ''; S.modalKind = null;
+  }
 
   // Nimilaatikko venyy oikealle vain jos nimi ei mahdu, eikä koskaan ruudun ulkopuolelle.
   function laajennaNimi(li) {
@@ -414,8 +418,11 @@
     $('btnStart').hidden = !isHost;
     $('btnStart').disabled = st.players.length < 2;
     $('lobbyHint').textContent = isHost
-      ? (st.players.length < 2 ? 'Kutsu vielä yksi pelaaja koodilla tai QR-koodilla.' : 'Kaikki valmiina!')
+      ? (st.players.length < 2
+          ? 'Peliin tarvitaan vähintään 2 pelaajaa – odota muita tai jaa koodi.'
+          : 'Kaikki valmiina!')
       : 'Odota, että pelinjohtaja aloittaa.';
+    $('lobbyHint').classList.toggle('varoitus', isHost && st.players.length < 2);
   }
 
   /* ---------------- piirtoalusta ja työkalut ---------------- */
@@ -908,25 +915,36 @@
       '<div class="countdown">' + escapeHtml(koodi) + '</div>', 'hostgone');
 
     var valmis = false;
+    var ajastin = null;
+    var alkoi = Date.now();
+
     function onnistui() {
       if (valmis) return;
       valmis = true;
       palautusKesken = false;
-      closeModal();
-      show('screen-lobby');
-      buildLobby(S.code);
-      if (S.state) onState(S.state);
+      // pidetään ilmoitus näkyvissä vähintään viisi sekuntia, ettei se vilahda ohi
+      var jaljella = Math.max(0, 5000 - (Date.now() - alkoi));
+      setTimeout(function () {
+        closeModal();
+        show('screen-lobby');
+        buildLobby(S.code);
+        if (S.state) onState(S.state);
+      }, jaljella);
     }
 
     // 1) oma vuoro yrittää ottaa koodin haltuun
     setTimeout(function () {
       if (valmis) return;
-      link.claimHost(koodi, myName(), function (virhe, code) {
+      var vanhatAsetukset = S.state ? { rounds: S.state.rounds, drawTime: S.state.drawTime } : null;
+      link.claimHost(koodi, myName(), vanhatAsetukset, function (virhe, code) {
         if (valmis) return;
         if (!virhe) {
+          valmis = true;                 // estetään rinnakkainen liittyminen omaan peliin
+          if (ajastin) clearInterval(ajastin);
           S.me = link.me;
           S.code = code || koodi;
           addToast('Sinusta tuli pelinjohtaja', 'good');
+          valmis = false;                // onnistui() asettaa lopullisen tilan
           onnistui();
         }
       });
@@ -934,7 +952,7 @@
 
     // 2) samalla yritetään liittyä siihen, joka ehti ensin
     var yrityksiä = 0;
-    var ajastin = setInterval(function () {
+    ajastin = setInterval(function () {
       if (valmis || link.isHost) return clearInterval(ajastin);
       if (++yrityksiä > 14) {                       // ~30 s, sitten luovutetaan
         clearInterval(ajastin);
@@ -947,7 +965,7 @@
         return;
       }
       link.joinGame(koodi, myName(), function (virhe, code) {
-        if (valmis || virhe) return;
+        if (valmis || virhe || link.isHost) return;
         clearInterval(ajastin);
         S.me = link.me;
         S.code = code || koodi;
@@ -1067,9 +1085,22 @@
 
   $('btnUpdate').addEventListener('click', nollaaVälimuisti);
 
-  // Verrataan käynnissä olevaa versiota siihen, mikä palvelimella on juuri nyt.
+  // Verrataan käynnissä olevaa versiota siihen, mikä GitHubissa on juuri nyt.
+  // Vanhentunut versio ei voi jatkaa: peli ei toimisi muiden kanssa oikein.
+  function naytaPakollinenPaivitys(uusin) {
+    openModal('<h2>Päivitys tarvitaan</h2>' +
+      '<p>Käytössäsi on versio ' + escapeHtml(GAME_VERSION) + ', mutta uusin on ' +
+      escapeHtml(uusin) + '.</p>' +
+      '<p class="hint">Vanhalla versiolla peli ei toimi oikein muiden kanssa. ' +
+      'Päivitys tyhjentää välimuistin – nimesi säilyy.</p>' +
+      '<div class="menu-actions"><button class="btn btn-primary" id="btnUpdateNow">Päivitä nyt</button></div>',
+      'update');
+    var b = $('btnUpdateNow');
+    if (b) b.addEventListener('click', nollaaVälimuisti);
+  }
+
   function tarkistaVersio() {
-    if (!window.fetch) return;
+    if (!window.fetch || S.modalKind === 'update') return;
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
@@ -1077,11 +1108,14 @@
           $('updateBox').hidden = false;
           $('updateBox').querySelector('p').textContent =
             'Käytössä on vanha versio (' + GAME_VERSION + '). Uusin on ' + data.version + '.';
+          naytaPakollinenPaivitys(data.version);
         }
       })
       .catch(function () {});
   }
   tarkistaVersio();
+  setInterval(tarkistaVersio, 90000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) tarkistaVersio(); });
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('sw.js').catch(function () {});
@@ -1091,6 +1125,8 @@
   window.__pja = {
     link: link, board: board, fitViewport: fitViewport,
     refreshOpen: haeAvoimetPelit,
+    checkVersion: tarkistaVersio,
+    tryClose: closeModal,
     state: function () { return S; }
   };
 
