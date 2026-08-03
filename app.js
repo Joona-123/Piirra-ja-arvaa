@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  var GAME_VERSION = '1.2.0';
+  var GAME_VERSION = '1.3.0';
 
   var $ = function (id) { return document.getElementById(id); };
   var link = new Link();
@@ -109,6 +109,20 @@
     if (link.isHost && link.engine) onState(link.engine.state());
     else if (S.state) onState(S.state);
   }
+
+  $('btnMenu').addEventListener('click', function () {
+    openModal('<h2>Valikko</h2>' +
+      '<p class="hint">Peli jatkuu ilman sinua, jos poistut.</p>' +
+      '<div class="menu-actions">' +
+      '<button class="btn" id="btnClose">Takaisin peliin</button>' +
+      '<button class="btn btn-danger" id="btnQuit">Poistu pelistä</button>' +
+      '</div>', 'menu');
+    $('btnClose').addEventListener('click', closeModal);
+    $('btnQuit').addEventListener('click', function () {
+      link.leave();
+      location.href = location.pathname;
+    });
+  });
 
   $('btnRename').addEventListener('click', function () {
     var uusi = $('renameInput').value.trim();
@@ -352,6 +366,16 @@
       li.className = (p.isDrawer ? 'drawer ' : '') + (p.guessed ? 'guessed ' : '') + (p.id === S.me ? 'me' : '');
       li.innerHTML = '<b>' + (p.isDrawer ? '✏️ ' : '') + escapeHtml(p.name) + '</b>' +
         '<span class="pts">' + p.score + ' p' + (p.guessed ? ' ✓' : '') + '</span>';
+      li.addEventListener('click', function () {
+        var auki = this;
+        auki.classList.add('expanded');
+        clearTimeout(auki._laajennus);
+        auki._laajennus = setTimeout(function () {
+          auki.classList.remove('expanded');
+          repositionBubbles();
+        }, 2500);
+        repositionBubbles();
+      });
       ul.appendChild(li);
     });
     repositionBubbles();
@@ -620,6 +644,14 @@
     document.body.classList.toggle('drawfull', full);
     $('btnTools').hidden = !full;
     if (!full) document.body.classList.remove('tools-open');
+
+    // Reunoilla pelaajat ovat piirtoalueen vieressä, jolloin puhekuplatkin
+    // osuvat nimien kohdalle: näin sekä näppäimistön kanssa että vaaka-asennossa.
+    var reunoilla = full || document.body.classList.contains('keyboard');
+    var players = $('players');
+    var koti = reunoilla ? document.querySelector('.stage') : document.querySelector('.side');
+    if (players.parentNode !== koti) koti.insertBefore(players, koti.firstChild);
+
     fitSheet();
   }
 
@@ -636,9 +668,6 @@
     var keyboard = !!full && h < full - full * 0.15;
     document.body.classList.toggle('keyboard', keyboard);
     // näppäimistön kanssa pelaajakortit siirtyvät piirtoalueen reunoille
-    var players = $('players');
-    var koti = keyboard ? document.querySelector('.stage') : document.querySelector('.side');
-    if (players.parentNode !== koti) koti.insertBefore(players, koti.firstChild);
     updateOrientation();
     fitSheet();
   }

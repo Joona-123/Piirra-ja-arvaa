@@ -132,7 +132,7 @@ input:focus{ outline:none; border-bottom-style:solid; }
 #btnCreate{ width:100%; }
 .fineprint{ text-align:center; color:var(--ink-soft); font-size:.9rem; margin-top:14px; }
 
-.version{ text-align:center; color:var(--ink-soft); font-size:.8rem; margin:10px 0 0; opacity:.75; }
+.version{ text-align:center; color:var(--ink-soft); font-size:.78rem; margin:6px 0 0; opacity:.7; }
 .update-box{
   margin-top:12px; padding:10px; text-align:center;
   background:#fdf0d5; border:2.5px dashed var(--red); border-radius:10px;
@@ -205,12 +205,20 @@ input:focus{ outline:none; border-bottom-style:solid; }
 }
 
 .hud{
-  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:8px;
+  display:grid; grid-template-columns:auto auto 1fr auto; align-items:center; gap:8px;
   background:var(--paper-lit);
   border:2.5px solid var(--ink); border-radius:var(--wobble);
   padding:3px 10px; box-shadow:var(--shadow);
   flex:0 0 auto;
 }
+.hud-menu{
+  width:32px; height:32px; padding:0; display:grid; place-items:center;
+  background:transparent; border:2px solid var(--ink); border-radius:8px 5px 9px 4px; cursor:pointer;
+}
+.hud-menu svg{ width:19px; height:19px; fill:none; stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
+.menu-actions{ display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+.btn-danger{ background:var(--red); color:#fff; border-color:var(--ink); }
+
 .hud-round{ font-family:var(--font-stamp); font-size:.8rem; line-height:1.15; max-width:78px; color:var(--ink-soft); white-space:pre-line; }
 .hud-word{ text-align:center; min-width:0; }
 .hud-word .cat{ display:block; font-size:.8rem; color:var(--ink-soft); }
@@ -325,6 +333,12 @@ input:focus{ outline:none; border-bottom-style:solid; }
   text-align:center;
 }
 .players li b{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:normal; }
+.players li{ position:relative; cursor:pointer; transition:none; }
+.players li.expanded{
+  z-index:9; width:max-content; max-width:min(70vw, 260px);
+  box-shadow:3px 3px 0 rgba(35,32,29,.25);
+}
+.players li.expanded b{ overflow:visible; text-overflow:clip; }
 .players li .pts{ font-family:var(--font-stamp); font-size:.68rem; color:var(--ink-soft); }
 .players li.drawer{ background:var(--yellow); }
 .players li.guessed{ border-color:var(--green); background:#e5f4e7; }
@@ -348,10 +362,10 @@ input:focus{ outline:none; border-bottom-style:solid; }
 .sysline.good{ color:var(--green); }
 .sysline.bad{ color:var(--red); }
 
-.chat-form{ display:flex; gap:8px; align-items:center; flex:0 0 auto; padding-bottom:env(safe-area-inset-bottom); }
+.chat-form{ display:flex; gap:6px; align-items:center; flex:0 0 auto; margin-top:2px; padding-bottom:env(safe-area-inset-bottom); }
 .chat-form input{
   border:2.5px solid var(--ink); border-radius:var(--wobble2);
-  background:var(--paper-lit); padding:10px 14px;
+  background:var(--paper-lit); padding:7px 12px;
 }
 .chat-form.hidden{ display:none; }
 
@@ -360,6 +374,7 @@ input:focus{ outline:none; border-bottom-style:solid; }
 body.drawfull .hud,
 body.drawfull .side,
 body.drawfull .toasts{ display:none !important; }
+body.drawfull .stage .players{ display:flex !important; }
 body.drawfull #screen-game{ padding:0; gap:0; }
 body.drawfull .stage{ gap:0; }
 body.drawfull .pad-holder{ padding:0; }
@@ -377,13 +392,15 @@ body.drawfull.tools-open .tools{ display:flex; }
 
 /* ---------- näppäimistö auki: pelaajat piirtoalueen reunoille ---------- */
 
-body.keyboard .stage .players{
+body.keyboard .stage .players,
+body.drawfull .stage .players{
   position:absolute; inset:0; z-index:6;
   display:flex; flex-flow:column wrap; align-content:space-between;
   justify-content:flex-start; gap:3px;
   pointer-events:none; padding:0;
 }
-body.keyboard .stage .players li{
+body.keyboard .stage .players li,
+body.drawfull .stage .players li{
   width:clamp(52px, 17vw, 78px); max-height:calc((100% - 18px) / 6);
   font-size:.65rem; padding:1px 4px;
 }
@@ -393,7 +410,15 @@ body.keyboard .players li .pts{ display:none; }
 body.keyboard .toasts{ display:none; }
 
 body.keyboard .hud{ padding:2px 10px; }
-body.keyboard .hud-round{ display:none; }
+body.keyboard .hud-menu{
+  width:32px; height:32px; padding:0; display:grid; place-items:center;
+  background:transparent; border:2px solid var(--ink); border-radius:8px 5px 9px 4px; cursor:pointer;
+}
+.hud-menu svg{ width:19px; height:19px; fill:none; stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; }
+.menu-actions{ display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+.btn-danger{ background:var(--red); color:#fff; border-color:var(--ink); }
+
+.hud-round{ display:none; }
 body.keyboard #screen-game{ gap:5px; padding:5px; }
 
 @media (max-width:420px){
@@ -427,10 +452,11 @@ body.keyboard #screen-game{ gap:5px; padding:5px; }
 /* ---------- lyhyet ilmoitukset ---------- */
 
 .toasts{
-  flex:0 1 auto; min-height:0; max-height:64px;
-  display:flex; flex-direction:column; justify-content:flex-end; gap:6px;
-  padding:4px 2px; overflow:hidden; pointer-events:none;
+  flex:0 0 auto; min-height:0; max-height:52px;
+  display:flex; flex-direction:column; justify-content:flex-end; gap:3px;
+  padding:0; overflow:hidden; pointer-events:none;
 }
+.toasts:empty{ display:none; }
 .toast{
   align-self:center; text-align:center;
   background:var(--paper-lit); border:2px dashed var(--ink); border-radius:10px;

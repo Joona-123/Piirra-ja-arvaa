@@ -1,6 +1,6 @@
 {
   "name": "Piirrä ja arvaa",
-  "short_name": "Piirrä",
+  "short_name": "Piirrä & arvaa",
   "description": "Piirustus- ja arvauspeli kavereiden kesken.",
   "start_url": "./",
   "scope": "./",
